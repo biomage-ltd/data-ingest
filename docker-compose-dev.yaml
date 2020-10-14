@@ -1,0 +1,12 @@
+version: '3.2'
+services:
+  biomage-ingest:
+    container_name: 'biomage-ingest-dev'
+    build:
+      target: dev
+      context: .
+    volumes:
+      - ./src:/data-ingest/src:cached
+      - ./input:/input:cached
+      - ./output:/output:cached
+    mem_limit: 8g

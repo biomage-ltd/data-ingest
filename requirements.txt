@@ -1,0 +1,10 @@
+boto3
+scanpy
+anndata
+scvelo
+python-igraph
+louvain
+flake8
+cryptography
+leidenalg
+scrublet
