@@ -10,6 +10,6 @@ services:
       target: prod
       context: .
     volumes:
-      - ./src:/src:cached
+      - ./src:/data-ingest/src:cached
       - ./input:/input:cached
       - ./output:/output:cached

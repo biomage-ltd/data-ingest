@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import hashlib
 import os
 import anndata
@@ -112,7 +113,7 @@ def main():
     adata = create_file(experiment_id)
     cell_set = cell_sets(adata)
 
-    name = os.env.get('EXPERIMENT_NAME')
+    name = os.getenv('EXPERIMENT_NAME')
 
     print("Experiment name is", name)
 
@@ -133,8 +134,8 @@ def main():
         ],
     }
     
-    access_key = os.env.get('AWS_ACCESS_KEY_ID')
-    secret_access_key = os.env.get('AWS_SECRET_ACCESS_KEY')
+    access_key = os.getenv('AWS_ACCESS_KEY_ID')
+    secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
 
     print("uploading to dynamodb...")
     dynamo = boto3.resource("dynamodb", aws_access_key_id=access_key, aws_secret_access_key=secret_access_key, region_name="eu-west-1").Table("experiments-production")

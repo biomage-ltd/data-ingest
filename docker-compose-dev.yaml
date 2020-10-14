@@ -9,4 +9,3 @@ services:
       - ./src:/data-ingest/src:cached
       - ./input:/input:cached
       - ./output:/output:cached
-    mem_limit: 8g

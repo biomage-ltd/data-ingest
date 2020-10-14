@@ -10,6 +10,7 @@ def main():
         exit(1)
     
     if os.listdir('/output'):
+        print(os.listdir('/output'))
         print('The output directory is not empty. Please clear it out before proceeding.')
         exit(1)
     

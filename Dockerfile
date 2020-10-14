@@ -20,7 +20,7 @@ RUN R -e 'devtools::install_github("kharchenkolab/conos")'
 
 FROM builder AS prod
 WORKDIR /src
-CMD ["./docker-entrypoint.sh"]
+CMD ["/data-ingest/src/docker-entrypoint.sh"]
 
 # ----
 
