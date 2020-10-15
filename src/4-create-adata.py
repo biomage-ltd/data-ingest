@@ -10,8 +10,9 @@ import json
 
 COLOR_POOL = []
 
-with open('/data-ingest/src/color_pool.json') as f:
+with open("/data-ingest/src/color_pool.json") as f:
     COLOR_POOL = json.load(f)
+
 
 def process_cells():
     df = pandas.read_csv("/output/r-out-cells.csv", names=("cell_names",))
@@ -46,7 +47,7 @@ def calculate_checksum(filenames):
 
 
 def create_file(checksum):
- 
+
     print("reading mtx files")
     X = mmread("/output/r-out-normalized.mtx").toarray()
     X_raw = mmread("/output/r-out-raw.mtx").tocsr()
@@ -75,7 +76,7 @@ def create_file(checksum):
     sc.tl.louvain(adata)
 
     print("saving file")
-    adata.write(f"/output/experiment.h5ad")
+    adata.write("/output/experiment.h5ad")
 
     return adata
 
@@ -107,13 +108,18 @@ def cell_sets(adata):
 
 def main():
     experiment_id = calculate_checksum(
-        ["/output/r-out-raw.mtx", "/output/r-out-normalized.mtx", "/output/r-out-cells.tsv", "/output/r-out-dispersions.tsv"]
+        [
+            "/output/r-out-raw.mtx",
+            "/output/r-out-normalized.mtx",
+            "/output/r-out-cells.tsv",
+            "/output/r-out-dispersions.tsv",
+        ]
     )
 
     adata = create_file(experiment_id)
     cell_set = cell_sets(adata)
 
-    name = os.getenv('EXPERIMENT_NAME')
+    name = os.getenv("EXPERIMENT_NAME")
 
     print("Experiment name is", name)
 
@@ -133,26 +139,37 @@ def main():
             },
         ],
     }
-    
-    access_key = os.getenv('AWS_ACCESS_KEY_ID')
-    secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+
+    access_key = os.getenv("AWS_ACCESS_KEY_ID")
+    secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     print("uploading to dynamodb...")
-    dynamo = boto3.resource("dynamodb", aws_access_key_id=access_key, aws_secret_access_key=secret_access_key, region_name="eu-west-1").Table("experiments-production")
+    dynamo = boto3.resource(
+        "dynamodb",
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_access_key,
+        region_name="eu-west-1",
+    ).Table("experiments-production")
     dynamo.put_item(Item=experiment_data)
 
     print("uploading Python object to s3...")
-    s3 = boto3.client("s3", aws_access_key_id=access_key, aws_secret_access_key=secret_access_key, region_name="eu-west-1")
+    s3 = boto3.client(
+        "s3",
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_access_key,
+        region_name="eu-west-1",
+    )
     bucket, key = FILE_NAME.split("/", 1)
 
-    with open(f"/output/experiment.h5ad", "rb") as f:
+    with open("/output/experiment.h5ad", "rb") as f:
         s3.put_object(Body=f, Bucket=bucket, Key=key)
 
     print("uploading R object to s3...")
-    with open(f"/output/experiment.rds", "rb") as f:
-        s3.put_object(Body=f, Bucket=bucket, Key=key.replace('python.h5ad', 'r.rds'))
+    with open("/output/experiment.rds", "rb") as f:
+        s3.put_object(Body=f, Bucket=bucket, Key=key.replace("python.h5ad", "r.rds"))
 
     print("successful. experiment is now accessible at:")
     print(f"https://scp.biomage.net/experiments/{experiment_id}/data-exploration")
+
 
 main()

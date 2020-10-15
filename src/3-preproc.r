@@ -1,8 +1,5 @@
 library(pagoda2)
 library(conos)
-# library(magrittr)
-# library(parallel)
-# require(rjson)
 library(Matrix)
 require(data.table)
 require(conos)
@@ -53,19 +50,19 @@ data$makeKnnGraph(
 message("computing leiden clusters...")
 data$getKnnClusters(method = conos::leiden.community, type = "PCA")
 
-message('Saving gene and cell data...')
+message("Saving gene and cell data...")
 write.table(
     data$misc$varinfo[c("qv")],
-    file='/output/r-out-dispersions.csv',
-    sep=',',
+    file = "/output/r-out-dispersions.csv",
+    sep = ",",
     col.names = F
 )
 
 write.table(
     rownames(data$counts),
-    file = '/output/r-out-cells.csv',
+    file = "/output/r-out-cells.csv",
     quote = F, col.names = F, row.names = F,
-    sep = '\t'
+    sep = "\t"
 )
 
 message("saving R object...")
