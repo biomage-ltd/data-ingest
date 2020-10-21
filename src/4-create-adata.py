@@ -128,7 +128,6 @@ def main():
     experiment_data = {
         "experimentId": experiment_id,
         "experimentName": name,
-        "matrixPath": FILE_NAME,
         "cellSets": [
             cell_set,
             {
