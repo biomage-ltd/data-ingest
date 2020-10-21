@@ -1,0 +1,15 @@
+version: '3.2'
+services:
+  biomage-ingest:
+    container_name: 'biomage-ingest'
+    environment:
+        - "EXPERIMENT_NAME=${EXPERIMENT_NAME}"
+        - "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}"
+        - "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}"
+    build:
+      target: prod
+      context: .
+    volumes:
+      - ./src:/data-ingest/src:cached
+      - ./input:/input:cached
+      - ./output:/output:cached

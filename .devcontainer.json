@@ -1,0 +1,12 @@
+{
+	"name": "Data ingest",
+	"workspaceFolder": "/data-ingest",
+    "dockerComposeFile": ["docker-compose-dev.yaml"],
+    "service": "biomage-ingest",
+	"extensions": [
+        "ikuyadeu.r",
+        "reditorsupport.r-lsp",
+        "GrapeCity.gc-excelviewer",
+        "ms-python.python"
+    ]
+}
