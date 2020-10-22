@@ -3,6 +3,7 @@ library(conos)
 library(Matrix)
 require(data.table)
 require(conos)
+library(gprofiler2)
 
 get_real_cells <- function(data, score_filter = 0.2) {
     scores <-
@@ -27,11 +28,18 @@ real_barcodes <- get_real_cells(data)
 message("removing doublets...")
 data$filtered <- data$filtered[, real_barcodes]
 
-message("making gene names unique...")
-rownames(data$filtered) <- make.unique(rownames(data$filtered))
+
+message('finding genome annotations for genes...')
+config <- RJSONIO::fromJSON("/input/meta.json")
+organism <- config$organism
+
+annotations <- gprofiler2::gconvert(
+    query = rownames(data$filtered), organism = organism, target="ENSG", mthreshold = Inf, filter_na = FALSE
+)
 
 message("creating pagoda2 object...")
 data <- Pagoda2$new(data$filtered)
+data$misc$gene_annotations <- annotations
 
 message("variance normalization...")
 data$adjustVariance(plot = F, gam.k = 10)
@@ -61,6 +69,13 @@ write.table(
 write.table(
     rownames(data$counts),
     file = "/output/r-out-cells.csv",
+    quote = F, col.names = F, row.names = F,
+    sep = "\t"
+)
+
+write.table(
+    data$misc$gene_annotations,
+    file = "/output/r-out-annotations.csv",
     quote = F, col.names = F, row.names = F,
     sep = "\t"
 )

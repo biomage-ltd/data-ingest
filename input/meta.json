@@ -1,0 +1,7 @@
+{
+    "name": "1k PBMCs from a Healthy Donor (v3 chemistry)",
+    "organism": "hsapiens",
+    "input": {
+        "type": "10x"
+    }
+}

@@ -1,3 +1,4 @@
-input/
+input/*
+!input/meta.json
 output/
 .DS_Store
