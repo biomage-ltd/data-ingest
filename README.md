@@ -6,28 +6,42 @@ An application for ingesting data into Biomage
 Set-up
 ------
 
-Make sure you have Docker, docker-compose installed.
-Make sure your input folder contains the required files: `barcodes.tsv`, `genes.tsv`, `matrix.mtx`. Make sure your output folder is empty. These conditions will be checked by the script before it runs.
+This repo contains a dockerised script that does data processing and filtering on
+experiment result files and loads the results into the Biomage single cell platform.
+This consists for the following steps:
 
-Then run:
-=======
-An application for ingesting data into Biomage. 
+1. Make sure you have Docker, docker-compose installed. Make sure your AWS credentials
+are correct in `~/.aws`.
 
-This repo contains a dockerised script that does data processing and filtering on experiment result files and loads the results into the Biomage single cell platform. This consists for the following steps:
+2. You might need to increase the amount of RAM being used by
+the virtual machine. Go to the Docker icon in your macOS
+bar, and click Preferences. Click Resources, and increase the memory slider.
 
-How to run the script to load user's data into the platform.
-------
+3. Make sure you have an `input/` and `output/` folders at the root of this project.
+Make sure that these folders are empty. Otherwise their contents can pollute the
+results after running the script. The only exception is the meta.json file that
+**must** be present in the `input/` folder.
 
-1. Make sure you have Docker, docker-compose installed.
+4. Go to S3 to `biomage-originals-production` bucket. You should see several folders.
+Each of them contains unprocessed experiment results for a user. Navigate to the correct
+folder with analysis files you want to preprocess and load in the platform. The folder
+should contain files `barcodes.tsv`, `genes.tsv`, `matrix.mtx`.
 
-2. Make sure you have an input and output folders at the root of this project. Make sure that these folders are empty. Otherwise their contents can pollute the results after running the script.
+5. Download the `barcodes.tsv`, `genes.tsv`, `matrix.mtx` files, located in S3 from the
+previous step. Make sure that they are saved inside the `input` folder you created in step 2.
 
-3. Go to S3 to `biomage-originals-production` bucket. You should see several folders. Each of them contains unprocessed experiment results for a user. Navigate to the correct folder with analysis files you want to preprocess and load in the platform. The folder should contain files `barcodes.tsv`, `genes.tsv`, `matrix.mtx`.
+6. Fill out the `meta.json` file. This is the configuration that is being used to save
+and process the files appropriately.
 
-4. Download the `barcodes.tsv`, `genes.tsv`, `matrix.mtx` files, located in S3 from the previous step. Make sure that they are saved inside the `input` folder you created in step 2.
+`name` should be the name of the experiment. If you don't know this, you can use the name
+of the folder in the S3 bucket.
+
+`organism` must match the organism of the data set. The appropriate organism ID can be found
+[here](https://biit.cs.ut.ee/gprofiler/page/organism-list). For example, Human is `hsapiens`,
+Chicken is `ggallus`,  cat is `fcatus`, etc.
+
+`input` should not be modified for 10x data sets.
 
 5. Run:
 
-    EXPERIMENT_NAME="My Experiment" AWS_ACCESS_KEY_ID=key AWS_SECRET_ACCESS_KEY=key  docker-compose up --build
-
-to start the ingest.
+    docker-compose up --build
