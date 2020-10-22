@@ -36,22 +36,24 @@ def process_genes():
     gene_annotations = pandas.read_csv(
         "/output/r-out-annotations.csv",
         sep="\t",
-        usecols=[3, 4, 5],
+        # usecols=[3, 4, 5],
+        usecols=[3, 4],
         index_col=0,
-        names=["gene_ids", "gene_names", "descriptions"],
-        na_values=["None"]
+        # names=["gene_ids", "gene_names", "descriptions"],
+        names=["gene_ids", "gene_names"],
+        na_values=["None"],
     )
     gene_annotations.drop_duplicates(inplace=True)
     gene_annotations.dropna(inplace=True)
 
     # concatenate -- if the name was not found, fill it with the ID
-    df = pandas.concat([df, gene_annotations], axis=1)    
+    df = pandas.concat([df, gene_annotations], axis=1)
 
     # make the gene names the index -- this is not recommended but
     # our current system relies on it
     df["gene_ids"] = df.index
-    df['gene_names'].fillna(df['gene_ids'], inplace=True)
-    df['descriptions'].fillna("novel transcript", inplace=True)
+    df["gene_names"].fillna(df["gene_ids"], inplace=True)
+    # df['descriptions'].fillna("novel transcript", inplace=True)
 
     df.set_index("gene_names", inplace=True, drop=False)
     df.index.names = [None]
@@ -144,7 +146,6 @@ def main():
     cell_set = cell_sets(adata)
 
     print("Experiment name is", config["name"])
-
 
     FILE_NAME = f"biomage-source-production/{experiment_id}/python.h5ad"
 
