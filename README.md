@@ -38,7 +38,7 @@ of the folder in the S3 bucket.
 
 `organism` must match the organism of the data set. The appropriate organism ID can be found
 [here](https://biit.cs.ut.ee/gprofiler/page/organism-list). For example, Human is `hsapiens`,
-Chicken is `ggallus`,  cat is `fcatus`, etc.
+Chicken is `ggallus`,  Zebrafish is `drerio`, etc.
 
 `input` should not be modified for 10x data sets.
 
