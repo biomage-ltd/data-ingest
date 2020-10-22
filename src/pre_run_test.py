@@ -14,14 +14,17 @@ def main():
         print('The output directory is not empty. Please clear it out before proceeding.')
         exit(1)
     
-    INPUT_FILES = ('barcodes.tsv', 'genes.tsv', 'matrix.mtx')
-
-    if not all(file in INPUT_FILES for file in os.listdir('/input')):
-        print("The input directory is missing files.")
-        print("At least `barcodes.tsv`, `genes.tsv` and `matrix.mtx` must be present.")
-        exit(1)
-    
     print('Folders seem okay, starting R pre-processing...')
 
 if __name__ == '__main__':
     main()
+
+#r$> map[which(!is.na(map))] 
+
+"""
+r$> map <- mapIds(org.Gg.eg.db, 
+                         keys=rownames(t), 
+                         column="SYMBOL", 
+                         keytype="ENSEMBL", 
+                         multiVals="first") 
+"""

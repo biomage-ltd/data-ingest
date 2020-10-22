@@ -13,3 +13,4 @@ services:
       - ./src:/data-ingest/src:cached
       - ./input:/input:cached
       - ./output:/output:cached
+      - ~/.aws:/root/.aws:cached

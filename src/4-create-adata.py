@@ -29,11 +29,34 @@ def process_cells():
 def process_genes():
     df = pandas.read_csv(
         "/output/r-out-dispersions.csv",
-        names=("gene_names", "dispersions"),
+        names=("gene_ids", "dispersions"),
+        index_col=0,
     )
+
+    gene_annotations = pandas.read_csv(
+        "/output/r-out-annotations.csv",
+        sep="\t",
+        usecols=[3, 4, 5],
+        index_col=0,
+        names=["gene_ids", "gene_names", "descriptions"],
+        na_values=["None"]
+    )
+    gene_annotations.drop_duplicates(inplace=True)
+    gene_annotations.dropna(inplace=True)
+
+    # concatenate -- if the name was not found, fill it with the ID
+    df = pandas.concat([df, gene_annotations], axis=1)    
+
+    # make the gene names the index -- this is not recommended but
+    # our current system relies on it
+    df["gene_ids"] = df.index
+    df['gene_names'].fillna(df['gene_ids'], inplace=True)
+    df['descriptions'].fillna("novel transcript", inplace=True)
 
     df.set_index("gene_names", inplace=True, drop=False)
     df.index.names = [None]
+
+    print(df)
 
     return df
 
@@ -47,7 +70,6 @@ def calculate_checksum(filenames):
 
 
 def create_file(checksum):
-
     print("reading mtx files")
     X = mmread("/output/r-out-normalized.mtx").toarray()
     X_raw = mmread("/output/r-out-raw.mtx").tocsr()
@@ -116,18 +138,25 @@ def main():
         ]
     )
 
+    config = None
+    with open("/input/meta.json", "r") as f:
+        config = json.load(f)
+
     adata = create_file(experiment_id)
     cell_set = cell_sets(adata)
 
-    name = os.getenv("EXPERIMENT_NAME")
-
-    print("Experiment name is", name)
+    print("Experiment name is", config["name"])
 
     FILE_NAME = f"biomage-source-production/{experiment_id}/python.h5ad"
 
     experiment_data = {
+        "apiVersion": "1.1.0-data-ingest-automated",
         "experimentId": experiment_id,
-        "experimentName": name,
+        "experimentName": config["name"],
+        "meta": {
+            "organism": config["organism"],
+            "type": config["input"]["type"],
+        },
         "matrixPath": FILE_NAME,
         "cellSets": [
             cell_set,

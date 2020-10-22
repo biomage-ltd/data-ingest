@@ -14,7 +14,13 @@ RUN R -e 'BiocManager::install(c("AnnotationDbi", "BiocGenerics", "GO.db", "pcaM
 RUN apt-get install --yes libglpk-dev
 RUN R -e 'devtools::install_github("eddelbuettel/rcppspdlog")'
 RUN R -e 'devtools::install_github("kharchenkolab/pagoda2")'
-RUN R -e 'devtools::install_github("kharchenkolab/conos")'
+
+RUN apt-get install --yes libxt-dev
+RUN R -e 'devtools::install_github("kharchenkolab/conos@v1.3.1")'
+
+RUN R -e 'install.packages("gprofiler2")'
+RUN R -e 'install.packages("RJSONIO")'
+
 
 # ----
 

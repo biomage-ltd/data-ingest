@@ -2,27 +2,43 @@ library(pagoda2)
 library(magrittr)
 library(parallel)
 library(Matrix)
-require(rjson)
 require(data.table)
+library(RJSONIO)
 
-create_dataframe <- function() {
-    # load data
-    data <- pagoda2::read.10x.matrices("/input")
+create_dataframe <- function(config) {
+    data_type <- config$input["type"]
+    data <- list()
 
-    # column names are barcodes prefixed with `one_`.
-    # Remove as we are processing one dataset.
-    colnames(data) <- gsub("^one_", "", colnames(data))
+    if (data_type == "10x") {
+        message("Loading 10x data set from input folder.")
+        data$raw <- pagoda2::read.10x.matrices("/input")
 
-    # read gene table
-    genes <- read.csv(
-        "/input/genes.tsv",
-        header = F, sep = "\t", stringsAsFactors = F
+        # column names are barcodes prefixed with `one_`.
+        # Remove as we are processing one dataset.
+        colnames(data$raw) <- gsub("^one_", "", colnames(data$raw))
+
+        genes <- read.csv(
+            "/input/genes.tsv",
+            header = F, sep = "\t", stringsAsFactors = F
+        )
+
+        colnames(genes) <- c("id", "name")
+        rownames(data$raw) <- genes[, "id"]
+    }
+
+    if (data_type == "table") {
+        path <- config$input["path"]
+
+        message(paste("Loading table-type data set from", path))
+
+        data$raw <- as.matrix(read.table(paste("/input", path, sep = "/")))
+    }
+
+    message(
+        paste(
+            "Found", nrow(data$raw), "genes and", ncol(data$raw), "cells."
+        )
     )
-
-    # change first two column names to be `id` and `name`
-    # assign names to the matrix instead of IDs
-    colnames(genes) <- c("id", "name")
-    rownames(data) <- genes[, "name"]
 
     return(data)
 }
@@ -42,15 +58,16 @@ prepare_scrublet_table <- function(data) {
     data.table::fwrite(table, file = path)
 }
 
-data <- list()
+message("Loading configuration...")
+config <- RJSONIO::fromJSON("/input/meta.json")
 
 message("Creating raw dataframe...")
-data$raw <- create_dataframe()
+data <- create_dataframe(config)
 
 message("Filtering cells by size...")
 data$filtered <- pagoda2::gene.vs.molecule.cell.filter(
     data$raw,
-    min.cell.size = 1e3,
+    min.cell.size = 10e1,
     plot = F
 )
 
