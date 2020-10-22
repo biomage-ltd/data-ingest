@@ -56,8 +56,6 @@ def process_genes():
     df.set_index("gene_names", inplace=True, drop=False)
     df.index.names = [None]
 
-    print(df)
-
     return df
 
 
@@ -146,6 +144,7 @@ def main():
     cell_set = cell_sets(adata)
 
     print("Experiment name is", config["name"])
+
 
     FILE_NAME = f"biomage-source-production/{experiment_id}/python.h5ad"
 

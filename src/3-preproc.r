@@ -28,6 +28,7 @@ real_barcodes <- get_real_cells(data)
 message("removing doublets...")
 data$filtered <- data$filtered[, real_barcodes]
 
+
 message('finding genome annotations for genes...')
 config <- RJSONIO::fromJSON("/input/meta.json")
 organism <- config$organism

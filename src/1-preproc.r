@@ -39,7 +39,7 @@ create_dataframe <- function(config) {
             "Found", nrow(data$raw), "genes and", ncol(data$raw), "cells."
         )
     )
-
+  
     return(data)
 }
 
@@ -67,7 +67,7 @@ data <- create_dataframe(config)
 message("Filtering cells by size...")
 data$filtered <- pagoda2::gene.vs.molecule.cell.filter(
     data$raw,
-    min.cell.size = 10e1,
+    min.cell.size = 1e3,
     plot = F
 )
 
