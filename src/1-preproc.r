@@ -1,9 +1,11 @@
-library(pagoda2)
+library(Seurat)
 library(magrittr)
 library(parallel)
 library(Matrix)
 require(data.table)
 library(RJSONIO)
+library(ggplot2)
+library(MASS)
 
 create_dataframe <- function(config) {
     data_type <- config$input["type"]
@@ -11,7 +13,7 @@ create_dataframe <- function(config) {
 
     if (data_type == "10x") {
         message("Loading 10x data set from input folder.")
-        data$raw <- pagoda2::read.10x.matrices("/input")
+        data$raw <- Seurat::Read10X("/input", unique.features=TRUE)
 
         # column names are barcodes prefixed with `one_`.
         # Remove as we are processing one dataset.
@@ -64,17 +66,11 @@ config <- RJSONIO::fromJSON("/input/meta.json")
 message("Creating raw dataframe...")
 data <- create_dataframe(config)
 
-message("Filtering cells by size...")
-data$filtered <- pagoda2::gene.vs.molecule.cell.filter(
-    data$raw,
-    min.cell.size = 1e3,
-    plot = F
-)
+message("Filtering cells by size")
+data$filtered <- data$raw[, Matrix::colSums(data$raw)>1e3]
 
 message("Filtering cells by molecules/gene...")
-data$filtered <- data$filtered[
-    Matrix::rowSums(data$filtered > 0) > 5,
-]
+data$filtered <- data$filtered[Matrix::rowSums(data$filtered>0)>5,]
 
 message("Exporting pre-scrublet data...")
 prepare_scrublet_table(data)
