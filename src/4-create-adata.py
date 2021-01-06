@@ -5,6 +5,7 @@ import anndata
 import pandas
 import scanpy as sc
 from scipy.io import mmread
+import matplotlib.pyplot as plt
 import boto3
 import json
 
@@ -81,7 +82,7 @@ def create_file(checksum):
     df["obs"] = process_cells()
     df["var"] = process_genes()
 
-    print("initializing with raw alues")
+    print("initializing with raw values")
     # initialize with raw values
     adata = anndata.AnnData(X=X_raw, obs=df["obs"], var=df["var"])
     adata.raw = adata
@@ -97,6 +98,12 @@ def create_file(checksum):
     sc.pp.neighbors(adata, n_neighbors=10, n_pcs=40)
     sc.tl.louvain(adata)
 
+    print("Running UMAP..")
+    sc.tl.umap(adata)
+    sc.pl.umap(adata, color=['louvain'])
+    plt.savefig("/output/scanpyumap.png")
+    plt.show()
+    
     print("saving file")
     adata.write("/output/experiment.h5ad")
 
@@ -150,7 +157,7 @@ def main():
     FILE_NAME = f"biomage-source-production/{experiment_id}/python.h5ad"
 
     experiment_data = {
-        "apiVersion": "1.1.0-data-ingest-automated",
+        "apiVersion": "1.1.0-seurat-automated",
         "experimentId": experiment_id,
         "experimentName": config["name"],
         "meta": {
