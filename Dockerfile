@@ -13,15 +13,15 @@ RUN R -e 'BiocManager::install(c("AnnotationDbi", "BiocGenerics", "GO.db", "pcaM
 
 RUN apt-get install --yes libglpk-dev
 RUN R -e 'devtools::install_github("eddelbuettel/rcppspdlog")'
-RUN R -e 'devtools::install_github("kharchenkolab/pagoda2")'
 
 RUN apt-get install --yes libxt-dev
 RUN R -e 'devtools::install_github("kharchenkolab/conos@v1.3.1")'
 
 RUN R -e 'install.packages("gprofiler2")'
 RUN R -e 'install.packages("RJSONIO")'
-
-
+RUN R -e 'install.packages("Seurat")'
+RUN R -e 'install.packages("ggplot2")'
+RUN R -e 'install.packages("MASS")'
 # ----
 
 FROM builder AS prod
@@ -33,6 +33,12 @@ CMD ["/data-ingest/src/docker-entrypoint.sh"]
 FROM builder AS dev
 
 WORKDIR /data-ingest
+
+RUN pip3 install -U jedi radian
+RUN R -e 'install.packages("languageserver", repos="http://cran.r-project.org")'
+
+COPY data-ingest.code-workspace .
+CMD ["tail", "-f", "/dev/null"]
 
 RUN pip3 install -U jedi radian
 RUN R -e 'install.packages("languageserver", repos="http://cran.r-project.org")'
