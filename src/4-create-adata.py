@@ -157,7 +157,7 @@ def main():
     FILE_NAME = f"biomage-source-production/{experiment_id}/python.h5ad"
 
     experiment_data = {
-        "apiVersion": "1.1.0-seurat-automated",
+        "apiVersion": "2.0.0-seurat-rds-automated",
         "experimentId": experiment_id,
         "experimentName": config["name"],
         "meta": {
