@@ -39,9 +39,3 @@ RUN R -e 'install.packages("languageserver", repos="http://cran.r-project.org")'
 
 COPY data-ingest.code-workspace .
 CMD ["tail", "-f", "/dev/null"]
-
-RUN pip3 install -U jedi radian
-RUN R -e 'install.packages("languageserver", repos="http://cran.r-project.org")'
-
-COPY data-ingest.code-workspace .
-CMD ["tail", "-f", "/dev/null"]

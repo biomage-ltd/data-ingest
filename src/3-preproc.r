@@ -26,7 +26,6 @@ real_barcodes <- get_real_cells(data)
 message("removing doublets...")
 data$filtered <- data$filtered[, real_barcodes]
 
-
 message("Creating Seurat Object...")
 data <- Seurat::CreateSeuratObject(data$filtered, assay='RNA', min.cells=3, min.features=200)
 
@@ -58,46 +57,41 @@ annotations <- gprofiler2::gconvert(
     query = rownames(data), organism = organism, target="ENSG", mthreshold = Inf, filter_na = FALSE)
 
 message("Storing annotations...")
-Misc(data, slot="annotations")
-data@misc$annotations <- annotations
+Misc(data, slot="annotations") <- annotations
 
-message("variance normalization...")
-data <- Seurat::NormalizeData(data, normalization.method = "LogNormalize", scale.factor = 10000) #default normalize method (check rdocs for other methods)
-data <-Seurat::FindVariableFeatures(data, selection.method = "vst", nfeatures = 3e3) #default method for finding variable features (check rdocs for other methods)
+message("Adding MT information...")
+data <- PercentageFeatureSet(data, pattern = "^MT-", col.name = "percent.mt")
 
-#feature scaling (takes a long time if you decide to scale this way)
-#all.genes <- rownames(data)
-#data <- Seurat::ScaleData(data, features=all.genes)
 
-data<-Seurat::ScaleData(data)
+message("Normalization step...")
+data <- Seurat::NormalizeData(data, normalization.method = "LogNormalize", scale.factor = 10000, verbose = F)
+data <-Seurat::FindVariableFeatures(data, selection.method = "vst", nfeatures = 3e3, verbose = F)
+data<-Seurat::ScaleData(data, verbose = F)
 #we can additionally regress out the mitochondrial genes
 #data <-Seurat::ScaleData(data, vars.to.regress= "percent.mt", verbose=FALSE)
 
+# Or we can use SCTransform (it uses regularized negative binomial regression)
+#data <- SCTransform(data, variable.features.n = 3000, vars.to.regress = "percent.mt", verbose = FALSE, do.scale=T)
+
+vars <- HVFInfo(object = data, assay = "RNA", selection.method = 'vst')
+vars <- vars[, 'variance.standardized', drop=FALSE]
 
 message("computing PCA reduction...")
 data<-Seurat::RunPCA(data, npcs = 50, features = VariableFeatures(object=data), verbose=FALSE)
 
 message("creating kNN graph...")
-data <- FindNeighbors(data) #default method
-
-#example of cosine method
-#data<- FindNeighbors(
- #   data, k.param = 20, 
-  #  annoy.metric = "cosine", verbose=FALSE)
+data <- FindNeighbors(data, k.param = 20, annoy.metric = "cosine", verbose=FALSE) #default method
 
 message("computing louvain clusters...")
-data <- FindClusters(data, resolution=0.5) #default method (Louvain clusters)
+data <- FindClusters(data, resolution=0.5, verbose = FALSE) #default method (Louvain clusters)
 
-#clustering algorith=4 is computing Leiden Clusters. 
-#data <- FindClusters(data,
- #   method = "igraph", algorithm = 4, verbose=FALSE)
 
-vars <-HVFInfo(object = data[["RNA"]], selection.method = 'vst')
-
-vars <- vars[, 'variance.standardized', drop=FALSE]
+# In case of SCTransform
+#vars <- HVFInfo(object = data, selection.method = 'sctransform')
+#vars <- vars[, "residual_variance", drop = FALSE]
 
 message("Running embedding")
-data <- RunUMAP(data, reduction='pca', dims = 1:10)
+data <- RunUMAP(data, reduction='pca', dims = 1:10, verbose = F, umap.method = "uwot-learn")
 
 pdf("/output/umap.pdf")
 DimPlot(data, reduction = "umap")
@@ -147,5 +141,5 @@ Matrix::writeMM(t(
         rownames(data@assays$RNA@data),
         colnames(data@assays$RNA@data)
     ]),
-    file = "/output/r-out-raw.mtx"
+    file = "/output/r-out-raw.mtx", verb
 )

@@ -7,12 +7,24 @@ library(RJSONIO)
 library(ggplot2)
 library(MASS)
 
-create_dataframe <- function(config) {
+create_dataframe <- function(config){
     data_type <- config$input["type"]
     data <- list()
 
-    if (data_type == "10x") {
+    if (data_type == "10x"){
         message("Loading 10x data set from input folder.")
+
+        files_v2_10x <- c("matrix.mtx", "barcodes.tsv", "genes.tsv")
+        files_v3_10x <- c("matrix.mtx.gz", "barcodes.tsv.gz", "features.tsv.gz")
+      
+        check_v2_10x <- all(files_v2_10x %in% list.files("/input"))
+        check_v3_10x <- all(files_v3_10x %in% list.files("/input"))
+
+        if(!check_v2_10x & !check_v3_10x){
+            message("The input directory must contain the structure for 10x data type {matrix.mtx/.mtx.gz, barcodes.tsv/.tsv.gz, genes.tsv/features.tsv.gz}.")
+            stop()
+        }
+
         data$raw <- Seurat::Read10X("/input", unique.features=TRUE)
 
         # column names are barcodes prefixed with `one_`.
@@ -33,7 +45,7 @@ create_dataframe <- function(config) {
 
         message(paste("Loading table-type data set from", path))
 
-        data$raw <- as.matrix(read.table(paste("/input", path, sep = "/")))
+        data$raw <- as.matrix(read.table(paste("/input", path, sep = "")))
     }
 
     message(
@@ -67,7 +79,7 @@ message("Creating raw dataframe...")
 data <- create_dataframe(config)
 
 message("Filtering cells by size")
-data$filtered <- data$raw[, Matrix::colSums(data$raw)>1e3]
+data$filtered <- data$raw[, Matrix::colSums(data$raw)>=1e3]
 
 message("Filtering cells by molecules/gene...")
 data$filtered <- data$filtered[Matrix::rowSums(data$filtered>0)>5,]

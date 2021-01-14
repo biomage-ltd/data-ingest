@@ -44,6 +44,7 @@ def process_genes():
         names=["gene_ids", "gene_names"],
         na_values=["None"],
     )
+    
     gene_annotations.drop_duplicates(inplace=True)
     gene_annotations.dropna(inplace=True)
 
@@ -98,11 +99,11 @@ def create_file(checksum):
     sc.pp.neighbors(adata, n_neighbors=10, n_pcs=40)
     sc.tl.louvain(adata)
 
-    print("Running UMAP..")
-    sc.tl.umap(adata)
-    sc.pl.umap(adata, color=['louvain'])
-    plt.savefig("/output/scanpyumap.png")
-    plt.show()
+    #print("Running UMAP..")
+    #sc.tl.umap(adata)
+    #sc.pl.umap(adata, color=['louvain'])
+    #plt.savefig("/output/scanpyumap.png")
+    #plt.show()
     
     print("saving file")
     adata.write("/output/experiment.h5ad")
