@@ -13,7 +13,10 @@ RUN R -e 'BiocManager::install(c("AnnotationDbi", "BiocGenerics", "GO.db", "pcaM
 
 RUN apt-get install --yes libglpk-dev
 RUN R -e 'devtools::install_github("eddelbuettel/rcppspdlog")'
+RUN R -e 'devtools::install_github("kharchenkolab/N2R")'
+RUN R -e 'devtools::install_github("kharchenkolab/sccore")'
 RUN R -e 'devtools::install_github("kharchenkolab/pagoda2")'
+
 
 RUN apt-get install --yes libxt-dev
 RUN R -e 'devtools::install_github("kharchenkolab/conos@v1.3.1")'

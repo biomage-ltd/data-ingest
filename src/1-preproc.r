@@ -10,8 +10,21 @@ create_dataframe <- function(config) {
     data <- list()
 
     if (data_type == "10x") {
+        files_v2_10x <- c("matrix.mtx", "barcodes.tsv", "genes.tsv")
+        files_v3_10x <- c("matrix.mtx.gz", "barcodes.tsv.gz", "features.tsv.gz")
+      
+        check_v2_10x <- all(files_v2_10x %in% list.files("/input"))
+        check_v3_10x <- all(files_v3_10x %in% list.files("/input"))
+      
+        if(!check_v2_10x & !check_v3_10x){
+         message("The input directory must contain the structure for 10x data type {matrix.mtx/.mtx.gz, barcodes.tsv/.tsv.gz, genes.tsv/features.tsv.gz}.")
+         stop()
+        }
+      
+        version <- ifelse(check_v2_10x, "V2", "V3")
+        
         message("Loading 10x data set from input folder.")
-        data$raw <- pagoda2::read.10x.matrices("/input")
+        data$raw <- pagoda2::read.10x.matrices("/input", version = version)
 
         # column names are barcodes prefixed with `one_`.
         # Remove as we are processing one dataset.
