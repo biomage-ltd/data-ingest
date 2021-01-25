@@ -152,7 +152,7 @@ create_dataframe <- function(config){
     if (data_type == "10x"){
         message("Loading 10x data set from input folder.")
 
-        data$raw <- Read10X_data("/input", unique.features=TRUE)
+        data$raw <- Read10X_data("/input", unique.features=TRUE, gene.column = 1)
     }
 
     if (data_type == "table") {
