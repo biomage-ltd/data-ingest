@@ -7,6 +7,123 @@ library(RJSONIO)
 library(ggplot2)
 library(MASS)
 
+
+Read10X_data <- function (data.dir = NULL, gene.column = 2, unique.features = TRUE, 
+          strip.suffix = FALSE) {
+  full.data <- list()
+  for (i in seq_along(along.with = data.dir)) {
+    run <- data.dir[i]
+    
+    if (!dir.exists(paths = run)) {
+      stop("Directory provided does not exist")
+    }
+    
+    files_10x <- list.files(run)
+    
+    barcode.idt <- grep("barcodes.tsv", files_10x)
+    matrix.idt <- grep("matrix.mtx", files_10x)
+    features.idt <- grep("features.tsv", files_10x)
+    
+    if(length(features.idt)==0) features.idt <- grep("genes.tsv", files_10x)
+    
+    
+    if(length(barcode.idt)==0){
+      stop("Barcode file missing. Expecting ", 
+           basename(path = run), "/barcodes.tsv")
+    }
+    
+    if(length(matrix.idt)==0){
+      stop("Expression matrix file missing. Expecting ", 
+           basename(path = run), "/matrix.mtx")
+    }
+    
+    if(length(features.idt)==0){
+      stop("Gene name or features file missing. Expecting ", 
+           basename(path = run), "/genes.tsv or features.tsv")
+    }
+    
+    barcode.loc <- file.path(run, files_10x[barcode.idt])
+    matrix.loc <- file.path(run, files_10x[matrix.idt])
+    features.loc <- file.path(run, files_10x[features.idt])
+    
+    data <- readMM(file = matrix.loc)
+    cell.names <- readLines(barcode.loc)
+    if (all(grepl(pattern = "\\-1$", x = cell.names)) & strip.suffix) {
+      cell.names <- as.vector(x = as.character(x = sapply(X = cell.names, 
+                                                          FUN = ExtractField, field = 1, delim = "-")))
+    }
+    if (is.null(x = names(x = data.dir))) {
+      if (i < 2) {
+        colnames(x = data) <- cell.names
+      }
+      else {
+        colnames(x = data) <- paste0(i, "_", cell.names)
+      }
+    }
+    else {
+      colnames(x = data) <- paste0(names(x = data.dir)[i], 
+                                   "_", cell.names)
+    }
+    feature.names <- read.delim(file = features.loc, header = FALSE, 
+                                stringsAsFactors = FALSE)
+    if (any(is.na(x = feature.names[, gene.column]))) {
+      warning("Some features names are NA. Replacing NA names with ID from the opposite column requested", 
+              call. = FALSE, immediate. = TRUE)
+      na.features <- which(x = is.na(x = feature.names[, 
+                                                       gene.column]))
+      replacement.column <- ifelse(test = gene.column == 
+                                     2, yes = 1, no = 2)
+      feature.names[na.features, gene.column] <- feature.names[na.features, 
+                                                               replacement.column]
+    }
+    if (unique.features) {
+      fcols = ncol(x = feature.names)
+      if (fcols < gene.column) {
+        stop(paste0("gene.column was set to ", gene.column, 
+                    " but feature.tsv.gz (or genes.tsv) only has ", 
+                    fcols, " columns.", " Try setting the gene.column argument to a value <= to ", 
+                    fcols, "."))
+      }
+      rownames(x = data) <- make.unique(names = feature.names[, 
+                                                              gene.column])
+    }
+    if (ncol(x = feature.names) > 2) {
+      data_types <- factor(x = feature.names$V3)
+      lvls <- levels(x = data_types)
+      if (length(x = lvls) > 1 && length(x = full.data) == 
+          0) {
+        message("10X data contains more than one type and is being returned as a list containing matrices of each type.")
+      }
+      expr_name <- "Gene Expression"
+      if (expr_name %in% lvls) {
+        lvls <- c(expr_name, lvls[-which(x = lvls == 
+                                           expr_name)])
+      }
+      data <- lapply(X = lvls, FUN = function(l) {
+        return(data[data_types == l, , drop = FALSE])
+      })
+      names(x = data) <- lvls
+    }
+    else {
+      data <- list(data)
+    }
+    full.data[[length(x = full.data) + 1]] <- data
+  }
+  list_of_data <- list()
+  for (j in 1:length(x = full.data[[1]])) {
+    list_of_data[[j]] <- do.call(cbind, lapply(X = full.data, 
+                                               FUN = `[[`, j))
+    list_of_data[[j]] <- as(object = list_of_data[[j]], Class = "dgCMatrix")
+  }
+  names(x = list_of_data) <- names(x = full.data[[1]])
+  if (length(x = list_of_data) == 1) {
+    return(list_of_data[[1]])
+  }
+  else {
+    return(list_of_data)
+  }
+}
+
 create_dataframe <- function(config){
     data_type <- config$input["type"]
     data <- list()
@@ -14,27 +131,23 @@ create_dataframe <- function(config){
     if (data_type == "10x"){
         message("Loading 10x data set from input folder.")
 
-        files_v2_10x <- c("matrix.mtx", "barcodes.tsv", "genes.tsv")
-        files_v3_10x <- c("matrix.mtx.gz", "barcodes.tsv.gz", "features.tsv.gz")
-      
-        check_v2_10x <- all(files_v2_10x %in% list.files("/input"))
-        check_v3_10x <- all(files_v3_10x %in% list.files("/input"))
-
-        if(!check_v2_10x & !check_v3_10x){
-            message("The input directory must contain the structure for 10x data type {matrix.mtx/.mtx.gz, barcodes.tsv/.tsv.gz, genes.tsv/features.tsv.gz}.")
-            stop()
-        }
-
-        data$raw <- Seurat::Read10X("/input", unique.features=TRUE)
+        data$raw <- Read10X_data("/input", unique.features=TRUE)
 
         # column names are barcodes prefixed with `one_`.
         # Remove as we are processing one dataset.
         colnames(data$raw) <- gsub("^one_", "", colnames(data$raw))
+        
+        files_10x <- list.files("/input")
+        genes_file <- files_10x[-c(grep("barcodes", files_10x), grep("matrix", files_10x), grep("json", files_10x))]
 
-        genes <- read.csv(
-            "/input/genes.tsv",
+        print(genes_file)
+
+        genes <- data.table::fread(
+            paste("/input", genes_file, sep  = "/"), 
             header = F, sep = "\t", stringsAsFactors = F
         )
+        
+        genes <- as.data.frame(genes)[, 1:2]
 
         colnames(genes) <- c("id", "name")
         rownames(data$raw) <- genes[, "id"]

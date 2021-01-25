@@ -22,6 +22,8 @@ RUN R -e 'install.packages("RJSONIO")'
 RUN R -e 'install.packages("Seurat")'
 RUN R -e 'install.packages("ggplot2")'
 RUN R -e 'install.packages("MASS")'
+RUN R -e 'install.packages("R.utils")'
+
 # ----
 
 FROM builder AS prod

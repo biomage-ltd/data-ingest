@@ -57,7 +57,8 @@ annotations <- gprofiler2::gconvert(
     query = rownames(data), organism = organism, target="ENSG", mthreshold = Inf, filter_na = FALSE)
 
 message("Storing annotations...")
-Misc(data, slot="annotations") <- annotations
+#Misc(data, slot="annotations") <- annotations
+data@misc$gene_annotations <- annotations
 
 message("Adding MT information...")
 data <- PercentageFeatureSet(data, pattern = "^MT-", col.name = "percent.mt")
@@ -123,7 +124,7 @@ write.table(
 )
 
 write.table(
-    data@misc[["annotations"]],
+    data@misc[["gene_annotations"]],
     file = "/output/r-out-annotations.csv",
     quote = F, col.names = F, row.names = F,
     sep = "\t"
