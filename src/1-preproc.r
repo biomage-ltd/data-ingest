@@ -8,6 +8,19 @@ library(ggplot2)
 library(MASS)
 
 
+# Read10X_data function
+#' @description Flexible function to load 10x data. It allows different format:
+#'      - matrix.mtx, barcodes.tsv, genes.tsv  
+#'      - matrix.mtx.gz, barcodes.tsv.gz, features.tsv.gz  
+#'      - matrix.mtx, barcodes.tsv, features.tsv  
+#'      - ... any possible combination that have at least  matrix, barcodes and genes/features data.
+#' @param data.dir file to look for
+#' @param gene.column gene column number
+#' @param unique.features not duplicated features
+#' @param strip.suffix boolean to remove -1 at the end of barcodes (default FALSE)
+#' 
+#' @return dgCMatrix with genes as rows and cells as column
+
 Read10X_data <- function (data.dir = NULL, gene.column = 2, unique.features = TRUE, 
           strip.suffix = FALSE) {
   full.data <- list()
@@ -124,6 +137,14 @@ Read10X_data <- function (data.dir = NULL, gene.column = 2, unique.features = TR
   }
 }
 
+# create_dataframe function
+#' @description read matrix based on config. Possibles input
+#'      - 10x data
+#'      - table
+#' @param config experiment settings.
+#'
+#' @return list with an element named raw with dgCMatrix with genes as rows and cells as column
+
 create_dataframe <- function(config){
     data_type <- config$input["type"]
     data <- list()
@@ -132,25 +153,6 @@ create_dataframe <- function(config){
         message("Loading 10x data set from input folder.")
 
         data$raw <- Read10X_data("/input", unique.features=TRUE)
-
-        # column names are barcodes prefixed with `one_`.
-        # Remove as we are processing one dataset.
-        colnames(data$raw) <- gsub("^one_", "", colnames(data$raw))
-        
-        files_10x <- list.files("/input")
-        genes_file <- files_10x[-c(grep("barcodes", files_10x), grep("matrix", files_10x), grep("json", files_10x))]
-
-        print(genes_file)
-
-        genes <- data.table::fread(
-            paste("/input", genes_file, sep  = "/"), 
-            header = F, sep = "\t", stringsAsFactors = F
-        )
-        
-        genes <- as.data.frame(genes)[, 1:2]
-
-        colnames(genes) <- c("id", "name")
-        rownames(data$raw) <- genes[, "id"]
     }
 
     if (data_type == "table") {
@@ -169,6 +171,12 @@ create_dataframe <- function(config){
   
     return(data)
 }
+
+# prepare_scrublet_table function 
+#' @description Save raw values before doublet filtering
+#' @param data list with an elment named `filtered` with raw values before doublet filtering
+#' 
+#' @export save matrix as pre-doublet-matrix.csv in output directory
 
 prepare_scrublet_table <- function(data) {
     table <- data.table(
