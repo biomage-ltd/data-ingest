@@ -118,6 +118,7 @@ def cell_sets(adata):
         "name": "Louvain clusters",
         "rootNode": True,
         "children": [],
+        "type": "cellSets",
     }
 
     raw = adata.obs[["louvain", "cell_ids"]]
@@ -173,6 +174,7 @@ def main():
                 "name": "Scratchpad",
                 "rootNode": True,
                 "children": [],
+                "type": "cellSets",
             },
         ],
     }
