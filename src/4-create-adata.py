@@ -5,6 +5,7 @@ import anndata
 import pandas
 import scanpy as sc
 from scipy.io import mmread
+import matplotlib.pyplot as plt
 import boto3
 import json
 
@@ -43,6 +44,7 @@ def process_genes():
         names=["gene_ids", "gene_names"],
         na_values=["None"],
     )
+    
     gene_annotations.drop_duplicates(inplace=True)
     gene_annotations.dropna(inplace=True)
 
@@ -81,7 +83,7 @@ def create_file(checksum):
     df["obs"] = process_cells()
     df["var"] = process_genes()
 
-    print("initializing with raw alues")
+    print("initializing with raw values")
     # initialize with raw values
     adata = anndata.AnnData(X=X_raw, obs=df["obs"], var=df["var"])
     adata.raw = adata
@@ -97,6 +99,12 @@ def create_file(checksum):
     sc.pp.neighbors(adata, n_neighbors=10, n_pcs=40)
     sc.tl.louvain(adata)
 
+    #print("Running UMAP..")
+    #sc.tl.umap(adata)
+    #sc.pl.umap(adata, color=['louvain'])
+    #plt.savefig("/output/scanpyumap.png")
+    #plt.show()
+    
     print("saving file")
     adata.write("/output/experiment.h5ad")
 
@@ -110,6 +118,7 @@ def cell_sets(adata):
         "name": "Louvain clusters",
         "rootNode": True,
         "children": [],
+        "type": "cellSets",
     }
 
     raw = adata.obs[["louvain", "cell_ids"]]
@@ -150,7 +159,7 @@ def main():
     FILE_NAME = f"biomage-source-production/{experiment_id}/python.h5ad"
 
     experiment_data = {
-        "apiVersion": "1.1.0-data-ingest-automated",
+        "apiVersion": "2.0.0-data-ingest-seurat-rds-automated",
         "experimentId": experiment_id,
         "experimentName": config["name"],
         "meta": {
@@ -165,6 +174,7 @@ def main():
                 "name": "Scratchpad",
                 "rootNode": True,
                 "children": [],
+                "type": "cellSets",
             },
         ],
     }
