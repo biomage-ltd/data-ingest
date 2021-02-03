@@ -3,6 +3,12 @@ library(Matrix)
 require(data.table)
 library(gprofiler2)
 
+# get_real_cells function 
+#' @description Get the cells that pass the filter of doublet scores
+#' @param data matrix to filter with barcodes as columns
+#' 
+#' @export save barcodes to keep
+
 get_real_cells <- function(data, score_filter = 0.2) {
     scores <-
         data.table::fread(
@@ -11,10 +17,31 @@ get_real_cells <- function(data, score_filter = 0.2) {
         )
 
     scores <- scores[, "barcodes" := colnames(data$filtered)]
-
     barcodes <- scores[score <= 0.2]$barcodes
-
     return(barcodes)
+}
+
+# check_config function 
+#' @description Create metadata dataframe from config files
+#' @param data matrix with barcodes as columns to assign metadata information
+#' @param config config list from meta.json
+#' 
+#' @export save barcodes to keep
+
+check_config <- function(data, config){
+    metadata <- NULL
+    
+    if("type" %in% names(config$samples$samples_info)){
+        metadata <- data.frame(row.names = colnames(data$filtered))
+        metadata[colnames(data$filtered), "type"] <- unlist(lapply(strsplit(colnames(data$filtered), "_"), `[`, 1))
+        
+        rest_metadata <- as.data.frame(config$samples$samples_info)
+        for(var in colnames(rest_metadata)[-which(colnames(rest_metadata)%in%"type")]){
+            metadata[, var] <- rest_metadata[, var][match(metadata$type, rest_metadata$type)]
+        }
+    }
+    
+    return(metadata)
 }
 
 message("reloading old matrices...")
@@ -26,8 +53,12 @@ real_barcodes <- get_real_cells(data)
 message("removing doublets...")
 data$filtered <- data$filtered[, real_barcodes]
 
+message("Loading configuration...")
+config <- RJSONIO::fromJSON("/input/meta.json")
+metadata <- check_config(data, config)
+
 message("Creating Seurat Object...")
-data <- Seurat::CreateSeuratObject(data$filtered, assay='RNA', min.cells=3, min.features=200)
+data <- Seurat::CreateSeuratObject(data$filtered, assay='RNA', min.cells=3, min.features=200, meta.data=metadata)
 
 #Below are QC plots which are exported as pdf files. Uncomment to look at the qc plots.
 
@@ -40,42 +71,56 @@ data <- Seurat::CreateSeuratObject(data$filtered, assay='RNA', min.cells=3, min.
 
 #Using Seurat we can subset data. We can subset based on nUMI, nFeature and mito genes. We have filtered in 1.preproc.r so subset was not used. 
 
-#Uncomment the code below to remove mito genes. 
-#message("Subset and remove mito genes...")
-#data[["percent.mt"]] <- PercentageFeatureSet(data, pattern = "^MT-")
-
 #In order to determine the filter parameters for mito genes we would need to plot them on either a violin plot or a scatter plot. Please refer to the plots above.
 
 #Remove by subsetting... or look under ScaleData below for regressing out mito genes.
 #data <- subset(data, subset = percent.mt < 5)
 
 message('finding genome annotations for genes...')
-config <- RJSONIO::fromJSON("/input/meta.json")
 organism <- config$organism
 
 annotations <- gprofiler2::gconvert(
     query = rownames(data), organism = organism, target="ENSG", mthreshold = Inf, filter_na = FALSE)
 
-message("Storing annotations...")
-#Misc(data, slot="annotations") <- annotations
-data@misc$gene_annotations <- annotations
-
 message("Adding MT information...")
 data <- PercentageFeatureSet(data, pattern = "^MT-", col.name = "percent.mt")
 
-
 message("Normalization step...")
-data <- Seurat::NormalizeData(data, normalization.method = "LogNormalize", scale.factor = 10000, verbose = F)
-data <-Seurat::FindVariableFeatures(data, selection.method = "vst", nfeatures = 3e3, verbose = F)
-data<-Seurat::ScaleData(data, verbose = F)
+if(as.logical(config$samples[["multisample"]])){
+    data.split <- SplitObject(data, split.by = "type")
+    for (i in 1:length(data.split)) {
+        data.split[[i]] <- NormalizeData(data.split[[i]], normalization.method = "LogNormalize", scale.factor = 10000, verbose = F)
+        data.split[[i]] <- FindVariableFeatures(data.split[[i]], selection.method = "vst", nfeatures = 3e3, verbose = FALSE)
+    }
+    
+    data.anchors <- FindIntegrationAnchors(object.list = data.split, dims = 1:30,verbose = FALSE)
+    data <- IntegrateData(anchorset = data.anchors, dims = 1:30)
+    DefaultAssay(data) <- "integrated"
+    data <- Seurat::ScaleData(data, verbose = F)
+    
+    data <- FindVariableFeatures(data, selection.method = "vst", assay = "RNA", nfeatures = 3e3, verbose = FALSE)
+    vars <- HVFInfo(object = data, assay = "RNA", selection.method = 'vst')
+    
+}else{
+    data <- Seurat::NormalizeData(data, normalization.method = "LogNormalize", scale.factor = 10000, verbose = F)
+    data <-Seurat::FindVariableFeatures(data, selection.method = "vst", nfeatures = 3e3, verbose = F)
+    data<-Seurat::ScaleData(data, verbose = F)
+    
+    vars <- HVFInfo(object = data, assay = "RNA", selection.method = 'vst')
+}
+
+vars <- vars[, 'variance.standardized', drop=FALSE]
+
+message("Storing annotations...")
+data@misc$gene_annotations <- annotations
+
+
 #we can additionally regress out the mitochondrial genes
 #data <-Seurat::ScaleData(data, vars.to.regress= "percent.mt", verbose=FALSE)
 
 # Or we can use SCTransform (it uses regularized negative binomial regression)
 #data <- SCTransform(data, variable.features.n = 3000, vars.to.regress = "percent.mt", verbose = FALSE, do.scale=T)
 
-vars <- HVFInfo(object = data, assay = "RNA", selection.method = 'vst')
-vars <- vars[, 'variance.standardized', drop=FALSE]
 
 message("computing PCA reduction...")
 data<-Seurat::RunPCA(data, npcs = 50, features = VariableFeatures(object=data), verbose=FALSE)
@@ -98,22 +143,25 @@ pdf("/output/umap.pdf")
 DimPlot(data, reduction = "umap")
 dev.off()
 
-#We can also create a tsne plot
-#message("Running embedding")
-#data <- RunTSNE(data, reduction='pca', dims = 1:10)
-#pdf("/output/tsne.pdf")
-#DimPlot(data, reduction = "tsne")
-#dev.off()
+
+if(as.logical(config$samples$multisample)){
+    pdf("/output/umap_type.pdf")
+    DimPlot(data, reduction = "umap", group.by = "type")
+    dev.off()
+}
 
 message("saving R object...")
 saveRDS(data, file = "/output/experiment.rds", compress = FALSE)
 
+vars$genes <- rownames(vars)
+vars <- vars[, c(2, 1)]
+vars <- vars[rownames(data), ]
 message("Saving gene and cell data...")
 write.table(
     vars,
     file = "/output/r-out-dispersions.csv",
     sep = ",",
-    col.names = F
+    col.names = F, row.names = F
 )
 
 write.table(
@@ -124,7 +172,7 @@ write.table(
 )
 
 write.table(
-    data@misc[["gene_annotations"]],
+    data@misc[["gene_annotations"]][data@misc[["gene_annotations"]]$input%in%rownames(data), ],
     file = "/output/r-out-annotations.csv",
     quote = F, col.names = F, row.names = F,
     sep = "\t"
@@ -134,13 +182,14 @@ message("saving R object...")
 saveRDS(data, file = "/output/experiment.rds", compress = FALSE)
 
 message("saving normalized matrix...")
-Matrix::writeMM(t(data@assays$RNA@data), file = "/output/r-out-normalized.mtx")
+Matrix::writeMM(t(data@assays[[data@active.assay]]@data
+                  ), file = "/output/r-out-normalized.mtx")
 
 message("saving raw matrix...")
 Matrix::writeMM(t(
-    data@assays$RNA@counts[
-        rownames(data@assays$RNA@data),
-        colnames(data@assays$RNA@data)
+    data@assays[["RNA"]]@counts[
+        rownames(data),
+        colnames(data)
     ]),
     file = "/output/r-out-raw.mtx", verb
 )

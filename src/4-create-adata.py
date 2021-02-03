@@ -18,12 +18,9 @@ with open("/data-ingest/src/color_pool.json") as f:
 def process_cells():
     df = pandas.read_csv("/output/r-out-cells.csv", names=("cell_names",))
     df.reset_index(inplace=True)
-
     df.set_index("cell_names", inplace=True)
     df.index.names = [None]
-
     df.rename(columns={"index": "cell_ids"}, inplace=True)
-
     return df
 
 
@@ -33,7 +30,6 @@ def process_genes():
         names=("gene_ids", "dispersions"),
         index_col=0,
     )
-
     gene_annotations = pandas.read_csv(
         "/output/r-out-annotations.csv",
         sep="\t",
@@ -44,22 +40,18 @@ def process_genes():
         names=["gene_ids", "gene_names"],
         na_values=["None"],
     )
-    
     gene_annotations.drop_duplicates(inplace=True)
     gene_annotations.dropna(inplace=True)
-
     # concatenate -- if the name was not found, fill it with the ID
     df = pandas.concat([df, gene_annotations], axis=1)
-
     # make the gene names the index -- this is not recommended but
     # our current system relies on it
     df["gene_ids"] = df.index
     df["gene_names"].fillna(df["gene_ids"], inplace=True)
     # df['descriptions'].fillna("novel transcript", inplace=True)
-
+    df = df.dropna()
     df.set_index("gene_names", inplace=True, drop=False)
     df.index.names = [None]
-
     return df
 
 
@@ -82,6 +74,11 @@ def create_file(checksum):
     df = {}
     df["obs"] = process_cells()
     df["var"] = process_genes()
+
+    print(df["obs"].shape)
+    print(df["var"].shape)
+    print(X.shape)
+    print(X_raw.shape)
 
     print("initializing with raw values")
     # initialize with raw values
@@ -113,12 +110,15 @@ def create_file(checksum):
 
 def cell_sets(adata):
     # construct new cell set group
+
     cell_set = {
         "key": "louvain",
         "name": "Louvain clusters",
         "rootNode": True,
         "children": [],
+        "type": "cellSets",
     }
+
 
     raw = adata.obs[["louvain", "cell_ids"]]
 
@@ -173,12 +173,13 @@ def main():
                 "name": "Scratchpad",
                 "rootNode": True,
                 "children": [],
+                "type": "cellSets",
             },
         ],
     }
 
-    access_key = os.getenv("AWS_ACCESS_KEY_ID")
-    secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+    access_key = os.getenv("AWS_ACCESS_KEY_ID")#"AKIATRDSHSYDGUKIHRY6"#
+    secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")#"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"#
 
     print("uploading to dynamodb...")
     dynamo = boto3.resource(

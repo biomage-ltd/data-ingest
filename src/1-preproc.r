@@ -14,47 +14,59 @@ library(MASS)
 #'      - matrix.mtx.gz, barcodes.tsv.gz, features.tsv.gz  
 #'      - matrix.mtx, barcodes.tsv, features.tsv  
 #'      - ... any possible combination that have at least  matrix, barcodes and genes/features data.
+#'      It also works with multiplesamples
 #' @param data.dir file to look for
 #' @param gene.column gene column number
 #' @param unique.features not duplicated features
 #' @param strip.suffix boolean to remove -1 at the end of barcodes (default FALSE)
+#' @param sample in case of multiplesample, it refers to the name of the samples
 #' 
-#' @return dgCMatrix with genes as rows and cells as column
+#' @return dgCMatrix with genes as rows and cells as column. In the case of multisample,
+#'  the cell names have a prefix _ corresponding to the type metadata from the json.
 
 Read10X_data <- function (data.dir = NULL, gene.column = 2, unique.features = TRUE, 
-          strip.suffix = FALSE) {
+                          strip.suffix = FALSE, samples=NULL) {
   full.data <- list()
-  for (i in seq_along(along.with = data.dir)) {
-    run <- data.dir[i]
+  # Create a matrix per sample
+  for (i in 1:(ifelse(is.null(samples), 1, length(samples)))) {
+    run <- data.dir
     
     if (!dir.exists(paths = run)) {
       stop("Directory provided does not exist")
     }
     
-    files_10x <- list.files(run)
+    # Checking the three files for the sample i
+    files_10x <- ifelse(rep(is.null(samples[i]), 3), list.files(run), list.files(run, recursive = T, pattern = samples[i]))
+    # Add the name or leave it empty if there is only one sample
+    sample_name = ifelse(is.null(samples[i]), "", paste(samples[i], "_", sep = ""))
     
+    if(any(is.na(files_10x)))
+      stop("Multisample loading was selected but there is no files with sample ", samples[i], 
+           ". Please, be sure that the directory has three files with the sample name in the filename.")
+    
+    # Lookin for the trhee files: barcode, matrix and features/genes
     barcode.idt <- grep("barcodes.tsv", files_10x)
     matrix.idt <- grep("matrix.mtx", files_10x)
     features.idt <- grep("features.tsv", files_10x)
     
     if(length(features.idt)==0) features.idt <- grep("genes.tsv", files_10x)
     
-    
     if(length(barcode.idt)==0){
       stop("Barcode file missing. Expecting ", 
-           basename(path = run), "/barcodes.tsv")
+           basename(path = run), "/", sample_name, "barcodes.tsv")
     }
     
     if(length(matrix.idt)==0){
       stop("Expression matrix file missing. Expecting ", 
-           basename(path = run), "/matrix.mtx")
+           basename(path = run), "/", sample_name, "matrix.mtx")
     }
     
     if(length(features.idt)==0){
       stop("Gene name or features file missing. Expecting ", 
-           basename(path = run), "/genes.tsv or features.tsv")
+           basename(path = run), "/", sample_name, "genes.tsv or features.tsv")
     }
     
+    # Get the full path
     barcode.loc <- file.path(run, files_10x[barcode.idt])
     matrix.loc <- file.path(run, files_10x[matrix.idt])
     features.loc <- file.path(run, files_10x[features.idt])
@@ -65,20 +77,12 @@ Read10X_data <- function (data.dir = NULL, gene.column = 2, unique.features = TR
       cell.names <- as.vector(x = as.character(x = sapply(X = cell.names, 
                                                           FUN = ExtractField, field = 1, delim = "-")))
     }
-    if (is.null(x = names(x = data.dir))) {
-      if (i < 2) {
-        colnames(x = data) <- cell.names
-      }
-      else {
-        colnames(x = data) <- paste0(i, "_", cell.names)
-      }
-    }
-    else {
-      colnames(x = data) <- paste0(names(x = data.dir)[i], 
-                                   "_", cell.names)
-    }
+    
+    # Adding the prefix
+    colnames(x = data) <- paste0(samples[i], "_", cell.names)
     feature.names <- read.delim(file = features.loc, header = FALSE, 
                                 stringsAsFactors = FALSE)
+    
     if (any(is.na(x = feature.names[, gene.column]))) {
       warning("Some features names are NA. Replacing NA names with ID from the opposite column requested", 
               call. = FALSE, immediate. = TRUE)
@@ -146,30 +150,30 @@ Read10X_data <- function (data.dir = NULL, gene.column = 2, unique.features = TR
 #' @return list with an element named raw with dgCMatrix with genes as rows and cells as column
 
 create_dataframe <- function(config){
-    data_type <- config$input["type"]
-    data <- list()
-
-    if (data_type == "10x"){
-        message("Loading 10x data set from input folder.")
-
-        data$raw <- Read10X_data("/input", unique.features=TRUE, gene.column = 1)
-    }
-
-    if (data_type == "table") {
-        path <- config$input["path"]
-
-        message(paste("Loading table-type data set from", path))
-
-        data$raw <- as.matrix(read.table(paste("/input", path, sep = "")))
-    }
-
-    message(
-        paste(
-            "Found", nrow(data$raw), "genes and", ncol(data$raw), "cells."
-        )
-    )
+  data_type <- config$input["type"]
+  data <- list()
   
-    return(data)
+  if (data_type == "10x"){
+    message("Loading 10x data set from input folder.")
+    samples <- NULL
+    if(as.logical(config$samples[["multisample"]]))
+      samples <- config$samples$samples_info$type
+    data$raw <- Read10X_data("/input", unique.features=TRUE, gene.column = 1, samples=samples)
+  }
+  
+  if (data_type == "table") {
+    path <- config$input["path"]
+    message(paste("Loading table-type data set from", path))
+    data$raw <- as.matrix(read.table(paste("/input", path, sep = "")))
+  }
+  
+  message(
+    paste(
+      "Found", nrow(data$raw), "genes and", ncol(data$raw), "cells."
+    )
+  )
+  
+  return(data)
 }
 
 # prepare_scrublet_table function 
@@ -179,18 +183,18 @@ create_dataframe <- function(config){
 #' @export save matrix as pre-doublet-matrix.csv in output directory
 
 prepare_scrublet_table <- function(data) {
-    table <- data.table(
-        as.matrix(
-            t(
-                data$filtered
-            )
-        )
+  table <- data.table(
+    as.matrix(
+      t(
+        data$filtered
+      )
     )
-
-    path <- "/output/pre-doublet-matrix.csv"
-
-    file.create(path)
-    data.table::fwrite(table, file = path)
+  , keep.rownames=T)
+  
+  path <- "/output/pre-doublet-matrix.csv"
+  
+  file.create(path)
+  data.table::fwrite(table, file = path, row.names = F)
 }
 
 message("Loading configuration...")
