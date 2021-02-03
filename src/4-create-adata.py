@@ -75,11 +75,6 @@ def create_file(checksum):
     df["obs"] = process_cells()
     df["var"] = process_genes()
 
-    print(df["obs"].shape)
-    print(df["var"].shape)
-    print(X.shape)
-    print(X_raw.shape)
-
     print("initializing with raw values")
     # initialize with raw values
     adata = anndata.AnnData(X=X_raw, obs=df["obs"], var=df["var"])
@@ -110,7 +105,6 @@ def create_file(checksum):
 
 def cell_sets(adata):
     # construct new cell set group
-
     cell_set = {
         "key": "louvain",
         "name": "Louvain clusters",
@@ -178,8 +172,8 @@ def main():
         ],
     }
 
-    access_key = os.getenv("AWS_ACCESS_KEY_ID")#"AKIATRDSHSYDGUKIHRY6"#
-    secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")#"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"#
+    access_key = os.getenv("AWS_ACCESS_KEY_ID")
+    secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     print("uploading to dynamodb...")
     dynamo = boto3.resource(
