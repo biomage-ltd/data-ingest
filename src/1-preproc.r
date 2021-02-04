@@ -79,7 +79,7 @@ Read10X_data <- function (data.dir = NULL, gene.column = 2, unique.features = TR
     }
     
     # Adding the prefix
-    colnames(x = data) <- paste0(samples[i], "_", cell.names)
+    colnames(x = data) <- paste0(samples[i], "", cell.names)
     feature.names <- read.delim(file = features.loc, header = FALSE, 
                                 stringsAsFactors = FALSE)
     
@@ -204,10 +204,10 @@ message("Creating raw dataframe...")
 data <- create_dataframe(config)
 
 message("Filtering cells by size")
-data$filtered <- data$raw[, Matrix::colSums(data$raw)>=1e3]
+data$filtered <- data$raw[, Matrix::colSums(data$raw>0)>=200]
 
 message("Filtering cells by molecules/gene...")
-data$filtered <- data$filtered[Matrix::rowSums(data$filtered>0)>5,]
+data$filtered <- data$filtered[Matrix::rowSums(data$filtered>0)>3,]
 
 message("Exporting pre-scrublet data...")
 prepare_scrublet_table(data)
