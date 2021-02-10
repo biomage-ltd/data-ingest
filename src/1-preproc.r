@@ -153,6 +153,17 @@ create_dataframe <- function(config){
   data_type <- config$input["type"]
   data <- list()
   
+  #Check config format
+  if(!"samples"%in%names(config))
+    stop("The format of the config is wrong. There should be a category for the sample.")
+
+  if(any(!c("samples_info", "multisample")%in%names(config$samples)))
+    stop("The format of the config is wrong. There should be a category inside sample with the multisample information.")
+
+  if(!"type"%in%names(config$samples$samples_info))
+    stop("The format of the config is wrong. There should be a category for the samples_info inside sample specifing the sample names in the case of 
+    multisample or empty otherwise.") 
+
   if (data_type == "10x"){
     message("Loading 10x data set from input folder.")
     samples <- NULL
