@@ -174,7 +174,7 @@ def main():
 
     access_key = os.getenv("AWS_ACCESS_KEY_ID")
     secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-
+    
     print("uploading to dynamodb...")
     dynamo = boto3.resource(
         "dynamodb",
@@ -183,7 +183,7 @@ def main():
         region_name="eu-west-1",
     ).Table("experiments-production")
     dynamo.put_item(Item=experiment_data)
-
+    
     print("uploading Python object to s3...")
     s3 = boto3.client(
         "s3",
@@ -192,14 +192,14 @@ def main():
         region_name="eu-west-1",
     )
     bucket, key = FILE_NAME.split("/", 1)
-
+    
     with open("/output/experiment.h5ad", "rb") as f:
         s3.put_object(Body=f, Bucket=bucket, Key=key)
-
+    
     print("uploading R object to s3...")
     with open("/output/experiment.rds", "rb") as f:
         s3.put_object(Body=f, Bucket=bucket, Key=key.replace("python.h5ad", "r.rds"))
-
+    
     print("successful. experiment is now accessible at:")
     print(f"https://scp.biomage.net/experiments/{experiment_id}/data-exploration")
 

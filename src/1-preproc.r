@@ -79,7 +79,7 @@ Read10X_data <- function (data.dir = NULL, gene.column = 2, unique.features = TR
     }
     
     # Adding the prefix
-    colnames(x = data) <- paste0(samples[i], "", cell.names)
+    colnames(x = data) <- paste0(sample_name, "", cell.names)
     feature.names <- read.delim(file = features.loc, header = FALSE, 
                                 stringsAsFactors = FALSE)
     
