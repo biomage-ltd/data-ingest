@@ -70,7 +70,12 @@ annotations <- gprofiler2::gconvert(
     query = rownames(data), organism = organism, target="ENSG", mthreshold = Inf, filter_na = FALSE)
 
 message("Adding MT information...")
-data <- PercentageFeatureSet(data, pattern = "^MT-", col.name = "percent.mt")
+data_gene_symbol <- data
+rownames(data_gene_symbol@assays$RNA@data) <- annotations$name[match(rownames(data), annotations$input)]
+rownames(data_gene_symbol@assays$RNA@counts) <- annotations$name[match(rownames(data), annotations$input)]
+data_gene_symbol <- PercentageFeatureSet(data_gene_symbol, pattern = "^MT-", col.name = "percent.mt")
+data@meta.data$percent.mt <- data_gene_symbol@meta.data[rownames(data@meta.data), "percent.mt"]
+rm(data_gene_symbol)
 
 message("Adding doublet scores information...")
 idt <- scores$barcodes[scores$barcodes%in%rownames(data@meta.data)]
