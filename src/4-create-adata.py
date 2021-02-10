@@ -40,6 +40,7 @@ def process_genes():
         names=["gene_ids", "gene_names"],
         na_values=["None"],
     )
+    
     gene_annotations.drop_duplicates(inplace=True)
     gene_annotations.dropna(inplace=True)
     # concatenate -- if the name was not found, fill it with the ID
