@@ -8,35 +8,35 @@ options(future.globals.maxSize= 1000 * 1024 ^ 2)
 
 # get_doublet_score function 
 #' @description Get the cells with its doublet scores computed previously through scrublet
-#' @param data matrix with barcodes as columns
+#' @param scdata matrix with barcodes as columns
 #' 
 #' @export save barcodes and double scores
 
-get_doublet_score <- function(data) {
+get_doublet_score <- function(scdata) {
     scores <-
         data.table::fread(
             "/output/doublet-scores.csv",
             col.names = c("score")
         )
 
-    scores <- as.data.frame(scores[, "barcodes" := colnames(data$filtered)])
+    scores <- as.data.frame(scores[, "barcodes" := colnames(scdata$filtered)])
     rownames(scores) <- scores$barcodes    
     return(scores)
 }
 
 # check_config function 
 #' @description Create metadata dataframe from config files
-#' @param data matrix with barcodes as columns to assign metadata information
+#' @param scdata matrix with barcodes as columns to assign metadata information
 #' @param config config list from meta.json
 #' 
 #' @export save barcodes to keep
 
-check_config <- function(data, config){
+check_config <- function(scdata, config){
     metadata <- NULL
     
     if("type" %in% names(config$samples$samples_info)){
-        metadata <- data.frame(row.names = colnames(data$filtered))
-        metadata[colnames(data$filtered), "type"] <- unlist(lapply(strsplit(colnames(data$filtered), "_"), `[`, 1))
+        metadata <- data.frame(row.names = colnames(scdata$filtered))
+        metadata[colnames(scdata$filtered), "type"] <- unlist(lapply(strsplit(colnames(scdata$filtered), "_"), `[`, 1))
         
         rest_metadata <- as.data.frame(config$samples$samples_info)
         for(var in colnames(rest_metadata)[-which(colnames(rest_metadata)%in%"type")]){
@@ -48,38 +48,39 @@ check_config <- function(data, config){
 }
 
 message("reloading old matrices...")
-data <- readRDS("/output/pre-doublet-data.rds")
+scdata <- readRDS("/output/pre-doublet-data.rds")
 
 message("getting scrublet results...")
-scores <- get_doublet_score(data)
+scores <- get_doublet_score(scdata)
 
 # message("removing doublets...")
-# data$filtered <- data$filtered[, scores$barcodes[scores$score<=0.2]]
+# scdata$filtered <- scdata$filtered[, scores$barcodes[scores$score<=0.2]]
 
 message("Loading configuration...")
 config <- RJSONIO::fromJSON("/input/meta.json")
-metadata <- check_config(data, config)
+metadata <- check_config(scdata, config)
 
 message("Creating Seurat Object...")
-data <- Seurat::CreateSeuratObject(data$filtered, assay='RNA', min.cells=3, min.features=200, meta.data=metadata)
+scdata <- Seurat::CreateSeuratObject(scdata$filtered, assay='RNA', min.cells=3, min.features=200, meta.data=metadata)
 
 message('finding genome annotations for genes...')
 organism <- config$organism
 
 annotations <- gprofiler2::gconvert(
-    query = rownames(data), organism = organism, target="ENSG", mthreshold = Inf, filter_na = FALSE)
+    query = rownames(scdata), organism = organism, target="ENSG", mthreshold = Inf, filter_na = FALSE)
 
-message("Adding MT information...")
-data_gene_symbol <- data
-rownames(data_gene_symbol@assays$RNA@data) <- annotations$name[match(rownames(data), annotations$input)]
-rownames(data_gene_symbol@assays$RNA@counts) <- annotations$name[match(rownames(data), annotations$input)]
-data_gene_symbol <- PercentageFeatureSet(data_gene_symbol, pattern = "^MT-", col.name = "percent.mt")
-data@meta.data$percent.mt <- data_gene_symbol@meta.data[rownames(data@meta.data), "percent.mt"]
-rm(data_gene_symbol)
+message("Storing annotations...")
+scdata@misc$gene_annotations <- annotations
+
+if(organism%in%c("hsapiens", "mmusculus")){
+  message("Adding MT information...")
+  mt.features <-  annotations$input[grep("^mt-", annotations$name, ignore.case = T)]
+  scdata <- PercentageFeatureSet(scdata, features=mt.features , col.name = "percent.mt")
+}
 
 message("Adding doublet scores information...")
-idt <- scores$barcodes[scores$barcodes%in%rownames(data@meta.data)]
-data@meta.data[idt, "doublet_scores"] <- scores[idt, "score"]
+idt <- scores$barcodes[scores$barcodes%in%rownames(scdata@meta.data)]
+scdata@meta.data[idt, "doublet_scores"] <- scores[idt, "score"]
 
 message("Normalization step...")
 
@@ -94,87 +95,85 @@ clustering_method <- 1 #"Louvain"
 clustering_resolution <- 0.5
 umap_min_distance <- 0.3
 umap_distance_metric <- "euclidean"
-tsne_perplexity <- min(30, ncol(data)/100)
-tsne_learning_rate <- max(200, ncol(data)/12)
+tsne_perplexity <- min(30, ncol(scdata)/100)
+tsne_learning_rate <- max(200, ncol(scdata)/12)
 
 if(as.logical(config$samples[["multisample"]])){
     
     # Seurat V3 pipeline (see for other methods: https://satijalab.org/seurat/archive/v3.0/integration.html)
-    data.split <- SplitObject(data, split.by = "type")
+    data.split <- SplitObject(scdata, split.by = "type")
     for (i in 1:length(data.split)) {
         data.split[[i]] <- NormalizeData(data.split[[i]], normalization.method = normalization_method, scale.factor = normalization_scale_factor, verbose = F)
         data.split[[i]] <- FindVariableFeatures(data.split[[i]], selection.method = "vst", nfeatures = nfeatures, verbose = FALSE)
     }
     
     data.anchors <- FindIntegrationAnchors(object.list = data.split, dims = 1:pca_nPCs, verbose = FALSE)
-    data <- IntegrateData(anchorset = data.anchors, dims = 1:pca_nPCs)
-    DefaultAssay(data) <- "integrated"
-    data <- Seurat::ScaleData(data, verbose = F)
+    scdata <- IntegrateData(anchorset = data.anchors, dims = 1:pca_nPCs)
+    DefaultAssay(scdata) <- "integrated"
+    scdata <- Seurat::ScaleData(scdata, verbose = F)
     
-    data <- FindVariableFeatures(data, selection.method = "vst", assay = "RNA", nfeatures = nfeatures, verbose = FALSE)
-    vars <- HVFInfo(object = data, assay = "RNA", selection.method = 'vst')
+    scdata <- FindVariableFeatures(scdata, selection.method = "vst", assay = "RNA", nfeatures = nfeatures, verbose = FALSE)
+    vars <- HVFInfo(object = scdata, assay = "RNA", selection.method = 'vst')
     
 }else{
-    data <- Seurat::NormalizeData(data, normalization.method = normalization_method, scale.factor = normalization_scale_factor, verbose = F)
-    data <-Seurat::FindVariableFeatures(data, selection.method = "vst", nfeatures = nfeatures, verbose = F)
-    data<-Seurat::ScaleData(data, verbose = F)
+    scdata <- Seurat::NormalizeData(scdata, normalization.method = normalization_method, scale.factor = normalization_scale_factor, verbose = F)
+    scdata <-Seurat::FindVariableFeatures(scdata, selection.method = "vst", nfeatures = nfeatures, verbose = F)
+    scdata<-Seurat::ScaleData(scdata, verbose = F)
     
-    vars <- HVFInfo(object = data, assay = "RNA", selection.method = 'vst')
+    vars <- HVFInfo(object = scdata, assay = "RNA", selection.method = 'vst')
 }
 
 vars <- vars[, 'variance.standardized', drop=FALSE]
+
 # In case of SCTransform
-#vars <- HVFInfo(object = data, selection.method = 'sctransform')
+#vars <- HVFInfo(object = scdata, selection.method = 'sctransform')
 #vars <- vars[, "residual_variance", drop = FALSE]
 
-message("Storing annotations...")
-data@misc$gene_annotations <- annotations
-
 message("computing PCA reduction...")
-data<-Seurat::RunPCA(data, npcs = 50, features = VariableFeatures(object=data), verbose=FALSE)
+scdata<-Seurat::RunPCA(scdata, npcs = 50, features = VariableFeatures(object=scdata), verbose=FALSE)
 
 message("creating kNN graph...")
-data <- FindNeighbors(data, k.param = 20, annoy.metric = neighbors_metric, verbose=FALSE) #default method
+scdata <- FindNeighbors(scdata, k.param = 20, annoy.metric = neighbors_metric, verbose=FALSE) #default method
 
 message("computing louvain clusters...")
-data <- FindClusters(data, resolution=clustering_resolution, verbose = FALSE, algorithm = clustering_method) #default method (Louvain clusters)
+scdata <- FindClusters(scdata, resolution=clustering_resolution, verbose = FALSE, algorithm = clustering_method) #default method (Louvain clusters)
 
 message("Running embedding")
-data <- RunUMAP(data, reduction='pca', dims = 1:pca_nPCs, verbose = F, umap.method = "uwot-learn", min.dist = umap_min_distance, metric = umap_distance_metric)
-data <- RunTSNE(data, reduction = 'pca', dims = 1:pca_nPCs, perplexity = tsne_perplexity, learning.rate = tsne_learning_rate)
+scdata <- RunUMAP(scdata, reduction='pca', dims = 1:pca_nPCs, verbose = F, umap.method = "uwot-learn", min.dist = umap_min_distance, metric = umap_distance_metric)
+scdata <- RunTSNE(scdata, reduction = 'pca', dims = 1:pca_nPCs, perplexity = tsne_perplexity, learning.rate = tsne_learning_rate)
 
 ## Adding more information to misc embedding
 
-data@misc[["embedding_configuration"]] <- list()
+scdata@misc[["embedding_configuration"]] <- list()
 
-data@misc$embedding_configuration[["UMAP"]] <- list()
-data@misc$embedding_configuration$UMAP["pca_nPCs"] <- pca_nPCs
-data@misc$embedding_configuration$UMAP["umap_min_distance"] <- umap_min_distance
-data@misc$embedding_configuration$UMAP["umap_distance_metric"] <- umap_distance_metric
+scdata@misc$embedding_configuration[["UMAP"]] <- list()
+scdata@misc$embedding_configuration$UMAP["pca_nPCs"] <- pca_nPCs
+scdata@misc$embedding_configuration$UMAP["umap_min_distance"] <- umap_min_distance
+scdata@misc$embedding_configuration$UMAP["umap_distance_metric"] <- umap_distance_metric
 
-data@misc$embedding_configuration[["TSNE"]] <- list()
-data@misc$embedding_configuration$TSNE["pca_nPCs"] <- pca_nPCs
-data@misc$embedding_configuration$TSNE["tsne_perplexity"] <- tsne_perplexity
-data@misc$embedding_configuration$TSNE["tsne_learning_rate"] <- tsne_learning_rate
+scdata@misc$embedding_configuration[["TSNE"]] <- list()
+scdata@misc$embedding_configuration$TSNE["pca_nPCs"] <- pca_nPCs
+scdata@misc$embedding_configuration$TSNE["tsne_perplexity"] <- tsne_perplexity
+scdata@misc$embedding_configuration$TSNE["tsne_learning_rate"] <- tsne_learning_rate
 
 
 pdf("/output/umap.pdf")
-DimPlot(data, reduction = "umap")
+DimPlot(scdata, reduction = "umap")
 dev.off()
 
 
 if(as.logical(config$samples$multisample)){
     pdf("/output/umap_type.pdf")
-    DimPlot(data, reduction = "umap", group.by = "type")
+    DimPlot(scdata, reduction = "umap", group.by = "type")
     dev.off()
 }
 
 message("saving R object...")
-saveRDS(data, file = "/output/experiment.rds", compress = FALSE)
+saveRDS(scdata, file = "/output/experiment.rds", compress = FALSE)
 
 vars$genes <- rownames(vars)
 vars <- vars[, c(2, 1)]
-vars <- vars[rownames(data), ]
+vars <- vars[rownames(scdata), ]
 message("Saving gene and cell data...")
 write.table(
     vars,
@@ -184,31 +183,31 @@ write.table(
 )
 
 write.table(
-    colnames(data),
+    colnames(scdata),
     file = "/output/r-out-cells.csv",
     quote = F, col.names = F, row.names = F,
     sep = "\t"
 )
 
 write.table(
-    data@misc[["gene_annotations"]][data@misc[["gene_annotations"]]$input%in%rownames(data), ],
+    scdata@misc[["gene_annotations"]][scdata@misc[["gene_annotations"]]$input%in%rownames(scdata), ],
     file = "/output/r-out-annotations.csv",
     quote = F, col.names = F, row.names = F,
     sep = "\t"
 )
 
 message("saving R object...")
-saveRDS(data, file = "/output/experiment.rds", compress = FALSE)
+saveRDS(scdata, file = "/output/experiment.rds", compress = FALSE)
 
 message("saving normalized matrix...")
-Matrix::writeMM(t(data@assays[[data@active.assay]]@data
+Matrix::writeMM(t(scdata@assays[[scdata@active.assay]]@data
                   ), file = "/output/r-out-normalized.mtx")
 
 message("saving raw matrix...")
 Matrix::writeMM(t(
-    data@assays[["RNA"]]@counts[
-        rownames(data),
-        colnames(data)
+    scdata@assays[["RNA"]]@counts[
+        rownames(scdata),
+        colnames(scdata)
     ]),
     file = "/output/r-out-raw.mtx", verb
 )

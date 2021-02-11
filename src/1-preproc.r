@@ -8,7 +8,7 @@ library(ggplot2)
 library(MASS)
 
 
-# Read10X_data function
+# Read10X_data function from Seurat V3 [1]
 #' @description Flexible function to load 10x data. It allows different format:
 #'      - matrix.mtx, barcodes.tsv, genes.tsv  
 #'      - matrix.mtx.gz, barcodes.tsv.gz, features.tsv.gz  
@@ -143,7 +143,7 @@ Read10X_data <- function (data.dir = NULL, gene.column = 2, unique.features = TR
 
 # create_dataframe function
 #' @description read matrix based on config. Possibles input
-#'      - 10x data
+#'      - 10x scdata
 #'      - table
 #' @param config experiment settings.
 #'
@@ -151,14 +151,16 @@ Read10X_data <- function (data.dir = NULL, gene.column = 2, unique.features = TR
 
 create_dataframe <- function(config){
   data_type <- config$input["type"]
-  data <- list()
+  scdata <- list()
   
   #Check config format
   if(!"samples"%in%names(config))
-    stop("The format of the config is wrong. There should be a category for the sample.")
+    stop("The format of the config is wrong. There should be a category for the sample.
+     Current content of config:", names(config))
 
   if(any(!c("samples_info", "multisample")%in%names(config$samples)))
-    stop("The format of the config is wrong. There should be a category inside sample with the multisample information.")
+    stop("The format of the config is wrong. There should be a category inside sample with the multisample information.
+     Current content of config:", names(config$samples))
 
   if(!"type"%in%names(config$samples$samples_info))
     stop("The format of the config is wrong. There should be a category for the samples_info inside sample specifing the sample names in the case of 
@@ -169,35 +171,35 @@ create_dataframe <- function(config){
     samples <- NULL
     if(as.logical(config$samples[["multisample"]]))
       samples <- config$samples$samples_info$type
-    data$raw <- Read10X_data("/input", unique.features=TRUE, gene.column = 1, samples=samples)
+    scdata$raw <- Read10X_data("/input", unique.features=TRUE, gene.column = 1, samples=samples)
   }
   
   if (data_type == "table") {
     path <- config$input["path"]
     message(paste("Loading table-type data set from", path))
-    data$raw <- as.matrix(read.table(paste("/input", path, sep = "")))
+    scdata$raw <- as.matrix(read.table(paste("/input", path, sep = "")))
   }
   
   message(
     paste(
-      "Found", nrow(data$raw), "genes and", ncol(data$raw), "cells."
+      "Found", nrow(scdata$raw), "genes and", ncol(scdata$raw), "cells."
     )
   )
   
-  return(data)
+  return(scdata)
 }
 
 # prepare_scrublet_table function 
 #' @description Save raw values before doublet filtering
-#' @param data list with an elment named `filtered` with raw values before doublet filtering
+#' @param scdata list with an elment named `filtered` with raw values before doublet filtering
 #' 
 #' @export save matrix as pre-doublet-matrix.csv in output directory
 
-prepare_scrublet_table <- function(data) {
+prepare_scrublet_table <- function(scdata) {
   table <- data.table(
     as.matrix(
       t(
-        data$filtered
+        scdata$filtered
       )
     )
   , keep.rownames=T)
@@ -212,14 +214,19 @@ message("Loading configuration...")
 config <- RJSONIO::fromJSON("/input/meta.json")
 
 message("Creating raw dataframe...")
-data <- create_dataframe(config)
+scdata <- create_dataframe(config)
 
 message("Filtering cells by size")
-data$filtered <- data$raw[, Matrix::colSums(data$raw>0)>=200]
+scdata$filtered <- scdata$raw[, Matrix::colSums(scdata$raw>0)>=200]
 
 message("Filtering cells by molecules/gene...")
-data$filtered <- data$filtered[Matrix::rowSums(data$filtered>0)>3,]
+scdata$filtered <- scdata$filtered[Matrix::rowSums(scdata$filtered>0)>3,]
 
-message("Exporting pre-scrublet data...")
-prepare_scrublet_table(data)
-saveRDS(data, file = "/output/pre-doublet-data.rds", compress = FALSE)
+message("Exporting pre-scrublet scdata...")
+prepare_scrublet_table(scdata)
+saveRDS(scdata, file = "/output/pre-doublet-data.rds", compress = FALSE)
+
+####### CITATIONS #######
+##
+## [1] Stuart and Butler et al. Comprehensive Integration of Single-Cell Data. Cell (2019) [Seurat V3]
+##
