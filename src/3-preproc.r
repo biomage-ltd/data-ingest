@@ -192,7 +192,7 @@ write.table(
 if(as.logical(config$samples$multisample)){
     message("saving multsiample info...")
     write.table(
-        data.frame(Cells_ID = names(scdata$type), type=scdata$type),
+        data.frame(Cells_ID = scdata$cells_id[names(scdata@active.ident)], type=scdata$type),
         file = "/output/multisample-cells.csv",
         quote = F, col.names = F, row.names = F,
         sep = "\t"
