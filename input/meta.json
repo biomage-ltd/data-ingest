@@ -1,6 +1,12 @@
 {
-    "name": "1k PBMCs from a Healthy Donor (v3 chemistry)",
-    "organism": "hsapiens",
+    "name": "Multisample-murine-gamma-delta-T-wt-beta2-KO-lungs",
+    "organism": "mmusculus",
+    "samples": {
+    	"multisample": "TRUE",
+    	"samples_info":{
+    		"type": ["KO", "WT1", "WT2"]
+    	}
+    },
     "input": {
         "type": "10x"
     }

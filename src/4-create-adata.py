@@ -18,12 +18,9 @@ with open("/data-ingest/src/color_pool.json") as f:
 def process_cells():
     df = pandas.read_csv("/output/r-out-cells.csv", names=("cell_names",))
     df.reset_index(inplace=True)
-
     df.set_index("cell_names", inplace=True)
     df.index.names = [None]
-
     df.rename(columns={"index": "cell_ids"}, inplace=True)
-
     return df
 
 
@@ -33,7 +30,6 @@ def process_genes():
         names=("gene_ids", "dispersions"),
         index_col=0,
     )
-
     gene_annotations = pandas.read_csv(
         "/output/r-out-annotations.csv",
         sep="\t",
@@ -47,19 +43,16 @@ def process_genes():
     
     gene_annotations.drop_duplicates(inplace=True)
     gene_annotations.dropna(inplace=True)
-
     # concatenate -- if the name was not found, fill it with the ID
     df = pandas.concat([df, gene_annotations], axis=1)
-
     # make the gene names the index -- this is not recommended but
     # our current system relies on it
     df["gene_ids"] = df.index
     df["gene_names"].fillna(df["gene_ids"], inplace=True)
     # df['descriptions'].fillna("novel transcript", inplace=True)
-
+    df = df.dropna()
     df.set_index("gene_names", inplace=True, drop=False)
     df.index.names = [None]
-
     return df
 
 
@@ -110,6 +103,36 @@ def create_file(checksum):
 
     return adata
 
+# cell_sets fn for seurat clusters
+def cell_sets_seurat(adata):
+    # construct new cell set group
+    cell_set = {
+        "key": "louvain",
+        "name": "Louvain clusters",
+        "rootNode": True,
+        "children": [],
+        "type": "cellSets",
+    }
+
+    cluster_annotations = pandas.read_csv(
+        "/output/cluster-cells.csv",
+        sep="\t",
+        names=["Cells_ID", "Clusters"],
+        na_values=["None"],
+    )
+    
+    for cluster in sorted(cluster_annotations["Clusters"].unique()):
+        view = cluster_annotations[cluster_annotations.Clusters == cluster]["Cells_ID"]
+        cell_set["children"].append(
+            {
+                "key": f"louvain-{cluster}",
+                "name": f"Cluster {cluster}",
+                "color": COLOR_POOL.pop(0),
+                "cellIds": [int(d) for d in view.tolist()],
+            }
+        )
+
+    return cell_set
 
 def cell_sets(adata):
     # construct new cell set group
@@ -137,6 +160,38 @@ def cell_sets(adata):
     return cell_set
 
 
+# cell_sets fn for seurat samples name
+def meta_sets(adata):
+    # construct new cell set group
+    cell_set = {
+        "key": "sample",
+        "name": "Samples",
+        "rootNode": True,
+        "children": [],
+        "type": "metadataCategorical",
+    }
+
+    meta_annotations = pandas.read_csv(
+        "/output/multisample-cells.csv",
+        sep="\t",
+        names=["Cells_ID", "type"],
+        na_values=["None"],
+    )
+    
+    for sample in meta_annotations["type"].unique():
+        view = meta_annotations[meta_annotations.type == sample]["Cells_ID"]
+        cell_set["children"].append(
+            {
+                "key": f"sample-{sample}",
+                "name": f"{sample}",
+                "color": COLOR_POOL.pop(0),
+                "cellIds": [int(d) for d in view.tolist()],
+            }
+        )
+
+    return cell_set
+
+
 def main():
     experiment_id = calculate_checksum(
         [
@@ -152,7 +207,25 @@ def main():
         config = json.load(f)
 
     adata = create_file(experiment_id)
-    cell_set = cell_sets(adata)
+
+    # Design cell_set cluster for DynamoDB
+    cell_set = cell_sets_seurat(adata)
+
+    # Design cell_set scratchpad for DynamoDB
+    scratchpad = {
+                "key": "scratchpad",
+                "name": "Scratchpad",
+                "rootNode": True,
+                "children": [],
+                "type": "cellSets",
+            }
+
+    if config['samples']['multisample'] == 'TRUE':
+        # Design cell_set meta_data for DynamoDB
+        meta_set = meta_sets(adata)
+        cellSets = [cell_set, meta_set, scratchpad]
+    else:
+        cellSets = [cell_set, scratchpad]
 
     print("Experiment name is", config["name"])
 
@@ -167,21 +240,12 @@ def main():
             "type": config["input"]["type"],
         },
         "matrixPath": FILE_NAME,
-        "cellSets": [
-            cell_set,
-            {
-                "key": "scratchpad",
-                "name": "Scratchpad",
-                "rootNode": True,
-                "children": [],
-                "type": "cellSets",
-            },
-        ],
+        "cellSets": cellSets,
     }
 
     access_key = os.getenv("AWS_ACCESS_KEY_ID")
     secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-
+    
     print("uploading to dynamodb...")
     dynamo = boto3.resource(
         "dynamodb",
@@ -190,7 +254,7 @@ def main():
         region_name="eu-west-1",
     ).Table("experiments-production")
     dynamo.put_item(Item=experiment_data)
-
+    
     print("uploading Python object to s3...")
     s3 = boto3.client(
         "s3",
@@ -199,14 +263,14 @@ def main():
         region_name="eu-west-1",
     )
     bucket, key = FILE_NAME.split("/", 1)
-
+    
     with open("/output/experiment.h5ad", "rb") as f:
         s3.put_object(Body=f, Bucket=bucket, Key=key)
-
+    
     print("uploading R object to s3...")
     with open("/output/experiment.rds", "rb") as f:
         s3.put_object(Body=f, Bucket=bucket, Key=key.replace("python.h5ad", "r.rds"))
-
+    
     print("successful. experiment is now accessible at:")
     print(f"https://scp.biomage.net/experiments/{experiment_id}/data-exploration")
 
