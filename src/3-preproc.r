@@ -34,6 +34,9 @@ get_doublet_score <- function(scdata) {
 check_config <- function(scdata, config){
     metadata <- NULL
     
+    # Check if "type" exists on config file inside samples_info. If it is TRUE, 
+    # we are in multisample experiments and we create metadata with samples names
+    # and other attributes that are inside samples_info 
     if("type" %in% names(config$samples$samples_info)){
         metadata <- data.frame(row.names = colnames(scdata$filtered))
         metadata[colnames(scdata$filtered), "type"] <- unlist(lapply(strsplit(colnames(scdata$filtered), "_"), `[`, 1))
@@ -68,9 +71,6 @@ organism <- config$organism
 
 annotations <- gprofiler2::gconvert(
     query = rownames(scdata), organism = organism, target="ENSG", mthreshold = Inf, filter_na = FALSE)
-
-message("Storing annotations...")
-scdata@misc$gene_annotations <- annotations
 
 if(organism%in%c("hsapiens", "mmusculus")){
   message("Adding MT information...")
@@ -121,13 +121,11 @@ if(as.logical(config$samples[["multisample"]])){
     scdata<-Seurat::ScaleData(scdata, verbose = F)
     
     vars <- HVFInfo(object = scdata, assay = "RNA", selection.method = 'vst')
+    # In case of SCTransform
+    #vars <- HVFInfo(object = scdata, selection.method = 'sctransform')
+    #vars <- vars[, "residual_variance", drop = FALSE]
+
 }
-
-vars <- vars[, 'variance.standardized', drop=FALSE]
-
-# In case of SCTransform
-#vars <- HVFInfo(object = scdata, selection.method = 'sctransform')
-#vars <- vars[, "residual_variance", drop = FALSE]
 
 message("computing PCA reduction...")
 scdata<-Seurat::RunPCA(scdata, npcs = 50, features = VariableFeatures(object=scdata), verbose=FALSE)
@@ -144,7 +142,7 @@ scdata <- RunTSNE(scdata, reduction = 'pca', dims = 1:pca_nPCs, perplexity = tsn
 
 ## Adding more information to misc embedding
 
-scdata@misc[["embedding_configuration"]] <- list()
+scdata@misc$embedding_configuration <- list()
 
 scdata@misc$embedding_configuration[["UMAP"]] <- list()
 scdata@misc$embedding_configuration$UMAP["pca_nPCs"] <- pca_nPCs
@@ -156,6 +154,14 @@ scdata@misc$embedding_configuration$TSNE["pca_nPCs"] <- pca_nPCs
 scdata@misc$embedding_configuration$TSNE["tsne_perplexity"] <- tsne_perplexity
 scdata@misc$embedding_configuration$TSNE["tsne_learning_rate"] <- tsne_learning_rate
 
+message("Storing annotations...")
+scdata@misc[["gene_annotations"]] <- annotations
+
+message("Storing dispersion...")
+# Convert to Gene Symbol
+vars$SYMBOL <- annotations$name[match(rownames(vars), annotations$input)]
+vars$ENSEMBL <- rownames(vars)
+scdata@misc[["gene_dispersion"]] <- vars
 
 pdf("/output/umap.pdf")
 DimPlot(scdata, reduction = "umap")
@@ -171,9 +177,8 @@ if(as.logical(config$samples$multisample)){
 message("saving R object...")
 saveRDS(scdata, file = "/output/experiment.rds", compress = FALSE)
 
-vars$genes <- rownames(vars)
-vars <- vars[, c(2, 1)]
-vars <- vars[rownames(scdata), ]
+
+vars <- vars[rownames(scdata), c("ENSEMBL", "variance.standardized")]
 message("Saving gene and cell data...")
 write.table(
     vars,
@@ -195,6 +200,24 @@ write.table(
     quote = F, col.names = F, row.names = F,
     sep = "\t"
 )
+
+message("saving cluster info...")
+write.table(
+    data.frame(Cells_ID = names(scdata@active.ident), Clusters=scdata@active.ident),
+    file = "/output/cluster-cells.csv",
+    quote = F, col.names = F, row.names = F,
+    sep = "\t"
+)
+
+if(as.logical(config$samples$multisample)){
+    message("saving multsiample info...")
+    write.table(
+        data.frame(Cells_ID = names(scdata$type), type=scdata$type),
+        file = "/output/multisample-cells.csv",
+        quote = F, col.names = F, row.names = F,
+        sep = "\t"
+    )
+}
 
 message("saving R object...")
 saveRDS(scdata, file = "/output/experiment.rds", compress = FALSE)

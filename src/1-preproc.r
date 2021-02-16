@@ -35,8 +35,11 @@ Read10X_data <- function (data.dir = NULL, gene.column = 2, unique.features = TR
       stop("Directory provided does not exist")
     }
     
+    # index of json files to not take into account
+    idt_json = grep("json", list.files(run))
+
     # Checking the three files for the sample i
-    files_10x <- ifelse(rep(is.null(samples[i]), 3), list.files(run), list.files(run, recursive = T, pattern = samples[i]))
+    files_10x <- ifelse(rep(is.null(samples[i]), 3), list.files(run)[-idt_json], list.files(run, recursive = T, pattern = samples[i]))
     # Add the name or leave it empty if there is only one sample
     sample_name = ifelse(is.null(samples[i]), "", paste(samples[i], "_", sep = ""))
     
@@ -217,9 +220,11 @@ message("Creating raw dataframe...")
 scdata <- create_dataframe(config)
 
 message("Filtering cells by size")
+# Default parameter by Seurat "min.features"
 scdata$filtered <- scdata$raw[, Matrix::colSums(scdata$raw>0)>=200]
 
 message("Filtering cells by molecules/gene...")
+# Default parameter by Seurat "min.cells"
 scdata$filtered <- scdata$filtered[Matrix::rowSums(scdata$filtered>0)>3,]
 
 message("Exporting pre-scrublet scdata...")

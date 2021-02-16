@@ -13,14 +13,9 @@ with open('/input/meta.json') as f:
 # Checking multisample
 if config['samples']['multisample'] == 'TRUE':
   samples = config['samples']['samples_info']['type']
-  # Running first sample
-  id_sample = samples[0]
-  print("Running sample " + id_sample)
-  sample = df.loc[df.index.str.contains(id_sample)]
-  scrub = scr.Scrublet(sample)
-  doublet_scores, _ = scrub.scrub_doublets()
+  doublet_scores = []
   # Running the rest
-  for i in range(1, len(samples)):
+  for i in range(0, len(samples)):
     id_sample = samples[i]
     print("Running sample " + id_sample)
     sample = df.loc[df.index.str.contains(id_sample)]
