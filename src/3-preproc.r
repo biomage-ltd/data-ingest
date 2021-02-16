@@ -181,6 +181,23 @@ if(as.logical(config$samples$multisample)){
 message("saving R object...")
 saveRDS(scdata, file = "/output/experiment.rds", compress = FALSE)
 
+message("saving cluster info...")
+write.table(
+    data.frame(Cells_ID = scdata$cells_id[names(scdata@active.ident)], Clusters=scdata@active.ident),
+    file = "/output/cluster-cells.csv",
+    quote = F, col.names = F, row.names = F,
+    sep = "\t"
+)
+
+if(as.logical(config$samples$multisample)){
+    message("saving multsiample info...")
+    write.table(
+        data.frame(Cells_ID = names(scdata$type), type=scdata$type),
+        file = "/output/multisample-cells.csv",
+        quote = F, col.names = F, row.names = F,
+        sep = "\t"
+    )
+}
 
 vars <- vars[rownames(scdata), c("ENSEMBL", "variance.standardized")]
 message("Saving gene and cell data...")
@@ -204,27 +221,6 @@ write.table(
     quote = F, col.names = F, row.names = F,
     sep = "\t"
 )
-
-message("saving cluster info...")
-write.table(
-    data.frame(Cells_ID = scdata$cells_id[names(scdata@active.ident)], Clusters=scdata@active.ident),
-    file = "/output/cluster-cells.csv",
-    quote = F, col.names = F, row.names = F,
-    sep = "\t"
-)
-
-if(as.logical(config$samples$multisample)){
-    message("saving multsiample info...")
-    write.table(
-        data.frame(Cells_ID = names(scdata$type), type=scdata$type),
-        file = "/output/multisample-cells.csv",
-        quote = F, col.names = F, row.names = F,
-        sep = "\t"
-    )
-}
-
-message("saving R object...")
-saveRDS(scdata, file = "/output/experiment.rds", compress = FALSE)
 
 message("saving normalized matrix...")
 Matrix::writeMM(t(scdata@assays[[scdata@active.assay]]@data
