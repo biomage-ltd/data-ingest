@@ -209,7 +209,7 @@ def main():
     adata = create_file(experiment_id)
 
     # Design cell_set cluster for DynamoDB
-    cell_set = cell_sets(adata)
+    cell_set = cell_sets_seurat(adata)
 
     # Design cell_set scratchpad for DynamoDB
     scratchpad = {

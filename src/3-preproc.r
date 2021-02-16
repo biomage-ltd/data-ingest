@@ -154,8 +154,12 @@ scdata@misc$embedding_configuration$TSNE["pca_nPCs"] <- pca_nPCs
 scdata@misc$embedding_configuration$TSNE["tsne_perplexity"] <- tsne_perplexity
 scdata@misc$embedding_configuration$TSNE["tsne_learning_rate"] <- tsne_learning_rate
 
-message("Storing annotations...")
+message("Storing gene annotations...")
 scdata@misc[["gene_annotations"]] <- annotations
+
+message("Storing cells id...")
+# Keeping old version of ids starting from 0
+scdata$cells_id <- 0:(nrow(scdata@meta.data)-1)
 
 message("Storing dispersion...")
 # Convert to Gene Symbol
@@ -203,7 +207,7 @@ write.table(
 
 message("saving cluster info...")
 write.table(
-    data.frame(Cells_ID = names(scdata@active.ident), Clusters=scdata@active.ident),
+    data.frame(Cells_ID = scdata$cells_id[names(scdata@active.ident)], Clusters=scdata@active.ident),
     file = "/output/cluster-cells.csv",
     quote = F, col.names = F, row.names = F,
     sep = "\t"
