@@ -93,8 +93,6 @@ def main():
         ]
     )
 
-    experiment_id="58bec69943ed27c9ea1fffb46a4f2468"
-
     config = None
     with open("/input/meta.json", "r") as f:
         config = json.load(f)
