@@ -220,11 +220,11 @@ message("Creating raw dataframe...")
 scdata <- create_dataframe(config)
 
 message("Filtering cells by size")
-# Default parameter by Seurat "min.features"
+# Default parameter by Seurat "min.features" of CreateSeuratObject fn (url: https://satijalab.org/seurat/archive/v3.2/pbmc3k_tutorial.html)
 scdata$filtered <- scdata$raw[, Matrix::colSums(scdata$raw>0)>=200]
 
 message("Filtering cells by molecules/gene...")
-# Default parameter by Seurat "min.cells"
+# Default parameter by Seurat "min.cells"  of CreateSeuratObject fn (url: https://satijalab.org/seurat/archive/v3.2/pbmc3k_tutorial.html)
 scdata$filtered <- scdata$filtered[Matrix::rowSums(scdata$filtered>0)>3,]
 
 message("Exporting pre-scrublet scdata...")
