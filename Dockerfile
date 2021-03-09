@@ -8,8 +8,10 @@ COPY requirements.txt .
 RUN python3 -m pip install --upgrade pip && \
     python3 -m pip install -r requirements.txt
 
+# DropletUtils needs v57+ to work, but needs to be done manually:
+RUN R -e 'install.packages("https://cran.r-project.org/src/contrib/matrixStats_0.58.0.tar.gz", repos=NULL, type="source")'
 RUN R -e 'chooseCRANmirror(ind=52); install.packages("BiocManager")'
-RUN R -e 'BiocManager::install(c("AnnotationDbi", "BiocGenerics", "GO.db", "pcaMethods", "org.Dr.eg.db", "org.Hs.eg.db", "org.Mm.eg.db"))'
+RUN R -e 'BiocManager::install(c("AnnotationDbi", "BiocGenerics", "GO.db", "pcaMethods", "org.Dr.eg.db", "org.Hs.eg.db", "org.Mm.eg.db", "DropletUtils"))'
 
 RUN apt-get install --yes libglpk-dev
 RUN R -e 'devtools::install_github("eddelbuettel/rcppspdlog")'
