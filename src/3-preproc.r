@@ -5,59 +5,15 @@ library(gprofiler2)
 
 set.seed(123)
 options(future.globals.maxSize= 1000 * 1024 ^ 2)
+source("src/help.r")
 
-# get_doublet_score function 
-#' @description Get the cells with its doublet scores computed previously through scrublet
-#' @param scdata matrix with barcodes as columns
-#' 
-#' @export save barcodes and double scores
 
-get_doublet_score <- function(scdata) {
-    scores <-
-        data.table::fread(
-            "/output/doublet-scores.csv",
-            col.names = c("score")
-        )
-
-    scores <- as.data.frame(scores[, "barcodes" := colnames(scdata$filtered)])
-    rownames(scores) <- scores$barcodes    
-    return(scores)
-}
-
-# check_config function 
-#' @description Create metadata dataframe from config files
-#' @param scdata matrix with barcodes as columns to assign metadata information
-#' @param config config list from meta.json
-#' 
-#' @export save barcodes to keep
-
-check_config <- function(scdata, config){
-    metadata <- NULL
-    
-    # Check if "type" exists on config file inside samples_info. If it is TRUE, 
-    # we are in multisample experiments and we create metadata with samples names
-    # and other attributes that are inside samples_info 
-    if("type" %in% names(config$samples$samples_info)){
-        metadata <- data.frame(row.names = colnames(scdata$filtered))
-        metadata[colnames(scdata$filtered), "type"] <- unlist(lapply(strsplit(colnames(scdata$filtered), "_"), `[`, 1))
-        
-        rest_metadata <- as.data.frame(config$samples$samples_info)
-        for(var in colnames(rest_metadata)[-which(colnames(rest_metadata)%in%"type")]){
-            metadata[, var] <- rest_metadata[, var][match(metadata$type, rest_metadata$type)]
-        }
-    }
-    
-    return(metadata)
-}
+################################################
+## LOADING SPARSE MATRIX AND CONFIGURATION
+################################################
 
 message("reloading old matrices...")
 scdata <- readRDS("/output/pre-doublet-data.rds")
-
-message("getting scrublet results...")
-scores <- get_doublet_score(scdata)
-
-# message("removing doublets...")
-# scdata$filtered <- scdata$filtered[, scores$barcodes[scores$score<=0.2]]
 
 message("Loading configuration...")
 config <- RJSONIO::fromJSON("/input/meta.json")
@@ -65,6 +21,10 @@ metadata <- check_config(scdata, config)
 
 message("Creating Seurat Object...")
 scdata <- Seurat::CreateSeuratObject(scdata$filtered, assay='RNA', min.cells=3, min.features=200, meta.data=metadata)
+
+################################################
+## GETTING METADATA AND ANNOTATION
+################################################
 
 message('finding genome annotations for genes...')
 organism <- config$organism
@@ -78,9 +38,32 @@ if(organism%in%c("hsapiens", "mmusculus")){
   scdata <- PercentageFeatureSet(scdata, features=mt.features , col.name = "percent.mt")
 }
 
+message("getting scrublet results...")
+scores <- get_doublet_score(scdata)
+
 message("Adding doublet scores information...")
 idt <- scores$barcodes[scores$barcodes%in%rownames(scdata@meta.data)]
 scdata@meta.data[idt, "doublet_scores"] <- scores[idt, "score"]
+
+
+################################################
+## DATA PROCESSING
+################################################
+
+#[HARDCODED]
+
+config.cellSizeDistribution <- list()
+config.mitochondrialContent <- list()
+config.classifier <- list()
+config.numGenesVsNumUmis <- list()
+config.doubletScores <- list()
+
+#
+# Step 1: Cell size distribution filter
+#
+
+
+
 
 message("Normalization step...")
 

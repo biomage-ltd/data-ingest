@@ -1,8 +1,30 @@
 ################################################
 ## STEP 5. Doublet score filter 
 #################################################
-#
-# doubletScores function 
+# This is a simplest filter that looks at a threshold value for the doublet scores. 
+# To separate cells with low droplet score from the ones that have a high droplet score content what makes us think that the are mistakenly considered as a single cell but they are actully two or more.  
+# This can be a useful first guess. The settings for such a filter can also contain a simple "probabilityThreshold" setting. 
+
+# The most uses values in doublet scores reporting in the scrublet paper [1] are around 0.25. There are not too much literature about how to compute
+# a threshold. For now, we will offer two methods:
+# --> Absolute threshold: In order to be not too extrictive the threshold is set to 0.25
+# --> Quantile 95th: get the value which leaves the 95% of the values of MT-content to the left. 
+generate_default_values_doubletScores <- function(scdata, config) {
+
+   if(config$filterSettings$method == "Absolute threshold")
+        # HARDCODE
+        threshold <- 0.25
+   
+   if(threshold$filterSettings$method == "Quantile 95th")
+        threshold <- quantile(scdata$doublet_scores, 0.95)
+
+    if(is.null(threshold))
+        stop("Enter a valid method: {Absolute threshold, Quantile 95th}.")
+
+  return(threshold)
+
+}
+
 #' @description Filters seurat object based on doubletScores scores
 #' @param config list containing the following information
 #'          - enable: true/false. Refering to apply or not the filter.
@@ -16,31 +38,37 @@
 
 doubletScores <- function(scdata, config){
 
-    # Check wheter the filter is set to true or false
-    if(!as.logical(toupper(config$enabled)))
-        return(scdata)
-
-    # Check if the experiment has MT-content
-    if(!"doubletScores_scores"%in%colnames(scdata@meta.data)){
+    # Check if the experiment has doubletScores
+    if (!"doublet_scores"%in%colnames(scdata@meta.data)){
         message("Warning! No doubletScores scores has been computed for this experiment!")
         return(scdata)
     }
     
+    probabilityThreshold <- config$filterSettings$probabilityThreshold
 
     # Check if it is required to compute sensible values. From the function 'generate_default_values_doubletScores', it is expected
-    # to get a list with two elements {probabilityThreshold and binStep}.
-    if(as.logical(toupper(config$auto)))
-        config$filterSettings <- generate_default_values_doubletScores(scdata, config)
+    # to get a value --> probabilityThreshold.
+    if (as.logical(toupper(config$auto)))
+        probabilityThreshold <- generate_default_values_doubletScores(scdata, config)
 
-    # Information regarding number of UMIs per cells is pre-computed during the 'CreateSeuratObject' function. 
-    scdata <- subset(scdata, subset = doubletScores_scores <= config$filterSettings$probabilityThreshold)
+    # Check wheter the filter is set to true or false
+    if (as.logical(toupper(config$enabled)))
+        # Information regarding doublet score is pre-computed during the 'data-ingest'. 
+        scdata <- subset(scdata, subset = doubletScores_scores <= probabilityThreshold)
     
+    # update config
+    config$filterSettings$probabilityThreshold <- probabilityThreshold
+
     # the result object will have to conform to this format: {data, config, plotData : {plot1, plot2}}
     result <- list(
         data = scdata,
         config = config,
         plotData = list(
-            plot1 = c(),
+            # plot 1: histgram of doublet scores
+            # AAACCCAAGCGCCCAT-1 AAACCCAAGGTTCCGC-1 AAACCCACAGAGTTGG-1
+            #              0.161              0.198              0.284  ...
+            plot1 = scdata$doublet_scores,
+            # there is no plot2
             plot2 = c()
         )
     )
