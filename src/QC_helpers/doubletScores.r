@@ -5,24 +5,16 @@
 # To separate cells with low droplet score from the ones that have a high droplet score content what makes us think that the are mistakenly considered as a single cell but they are actully two or more.  
 # This can be a useful first guess. The settings for such a filter can also contain a simple "probabilityThreshold" setting. 
 
+
 # The most uses values in doublet scores reporting in the scrublet paper [1] are around 0.25. There are not too much literature about how to compute
 # a threshold. For now, we will offer two methods:
 # --> Absolute threshold: In order to be not too extrictive the threshold is set to 0.25
-# --> Quantile 95th: get the value which leaves the 95% of the values of MT-content to the left. 
 generate_default_values_doubletScores <- function(scdata, config) {
 
-   if(config$filterSettings$method == "Absolute threshold")
-        # HARDCODE
-        threshold <- 0.25
-   
-   if(threshold$filterSettings$method == "Quantile 95th")
-        threshold <- quantile(scdata$doublet_scores, 0.95)
+    # HARDCODE
+    threshold <- 0.25
 
-    if(is.null(threshold))
-        stop("Enter a valid method: {Absolute threshold, Quantile 95th}.")
-
-  return(threshold)
-
+    return(threshold)
 }
 
 #' @description Filters seurat object based on doubletScores scores
@@ -54,22 +46,22 @@ doubletScores <- function(scdata, config){
     # Check wheter the filter is set to true or false
     if (as.logical(toupper(config$enabled)))
         # Information regarding doublet score is pre-computed during the 'data-ingest'. 
-        scdata <- subset(scdata, subset = doubletScores_scores <= probabilityThreshold)
-    
+        scdata.filtered <- subset(scdata, subset = doublet_scores <= probabilityThreshold)
+    else
+        scdata.filtered <- scdata
+
     # update config
     config$filterSettings$probabilityThreshold <- probabilityThreshold
 
     # the result object will have to conform to this format: {data, config, plotData : {plot1, plot2}}
     result <- list(
-        data = scdata,
+        data = scdata.filtered,
         config = config,
         plotData = list(
             # plot 1: histgram of doublet scores
             # AAACCCAAGCGCCCAT-1 AAACCCAAGGTTCCGC-1 AAACCCACAGAGTTGG-1
             #              0.161              0.198              0.284  ...
-            plot1 = scdata$doublet_scores,
-            # there is no plot2
-            plot2 = c()
+            plot1 = scdata$doublet_scores
         )
     )
 

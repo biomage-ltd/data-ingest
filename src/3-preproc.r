@@ -6,6 +6,13 @@ library(gprofiler2)
 set.seed(123)
 options(future.globals.maxSize= 1000 * 1024 ^ 2)
 source("src/help.r")
+source("src/QC_helpers/cellSizeDistribution.r")
+source("src/QC_helpers/mitochondrialContent.r")
+source("src/QC_helpers/classifier.r")
+source("src/QC_helpers/numGenesVsNumUmis.r")
+source("src/QC_helpers/doubletScores.r")
+source("src/QC_helpers/dataIntegration.r")
+source("src/QC_helpers/computeEmbedding.r")
 
 
 ################################################
@@ -36,6 +43,10 @@ if(organism%in%c("hsapiens", "mmusculus")){
   message("Adding MT information...")
   mt.features <-  annotations$input[grep("^mt-", annotations$name, ignore.case = T)]
   scdata <- PercentageFeatureSet(scdata, features=mt.features , col.name = "percent.mt")
+
+ # To be consistent we will conver to fraction
+  scdata$fraction.mt <- scdata$percent.mt/100
+
 }
 
 message("getting scrublet results...")
@@ -52,90 +63,126 @@ scdata@meta.data[idt, "doublet_scores"] <- scores[idt, "score"]
 
 #[HARDCODED]
 
-config.cellSizeDistribution <- list()
-config.mitochondrialContent <- list()
-config.classifier <- list()
-config.numGenesVsNumUmis <- list()
-config.doubletScores <- list()
+config.cellSizeDistribution <- list(enabled="true", auto="true", 
+    filterSettings = list(minCellSize=10800, binStep = 200)
+)
+
+config.mitochondrialContent <- list(enabled="true", auto="true", 
+    filterSettings = list(method="absolute_threshold", methodSettings = list(
+        absolute_threshold=list(maxFraction=0.1, binStep=0.05)
+        )
+    )
+)
+
+config.classifier <- list(enabled="true", auto="true", 
+    filterSettings = list(minProbability=0.82, bandwidth=-1, minProbabiliy=0.8, filterThreshold=-1)
+)
+
+config.numGenesVsNumUmis <- list(enabled="true", auto="true", 
+    filterSettings = list(regressionType = "gam", regressionTypeSettings = list(
+        "gam" = list(p.level=0.001)
+        )
+    )
+)
+
+config.doubletScores <- list(enabled="true", auto="true", 
+    filterSettings = list(probabilityThreshold = 0.2 , binStep = 0.05)
+)
+
+config.dataIntegration <- list(enabled="true", auto="true", 
+    dataIntegration = list(method = "seuratv3", methodSettings = list(seuratv3=list(numGenes=2000, normalisation="LogNormalize"))),
+    dimensionalityReduction = list(method = "rpca", numPCs = 30, excludeGeneCategories = c())
+)
+
+config.computeEmbedding <- list(enabled="true", auto="true", 
+    embeddingSettings = list(method = "umap", methodSettings = list(
+                                umap = list(minimumDistance=0.2, distanceMetric="euclidean"), 
+                                tsne = list(perplexity=30, learningRate=200)
+                            ) 
+                        ), 
+    clusteringSettings = list(method = "louvain", methodSettings = list(
+                            louvain = list(resolution = 0.5)
+                            )
+                        )
+)
+
+
 
 #
 # Step 1: Cell size distribution filter
 #
 
+# Waiting filter 1
+#result.step1 <- cellSizeDistribution(scdata, config.cellSizeDistribution)
+result.step1 <- list(data=scdata)
+
+#
+# Step 2: Mitochondrial content filter
+#
+
+# Be aware that all the currents experiment does not have the slot fracion.mt, but they have the percent.mt. 
+# To be consistent, in this new version I have transformed to fracion.mt [Line 46]
+result.step2 <- mitochondrialContent(result.step1$data, config.mitochondrialContent)
+
+## plotData plots
+## Plot 1 (histogram with fraction MT)
+# h=hist(result.step2$plotData$plot1,plot=FALSE)
+# h$density = h$counts/sum(h$counts)
+# plot(h,freq=FALSE)
+# abline(v=result.step2$config$filterSettings$methodSettings$absolute_threshold$maxFraction, col = "red")
+#
+## Plot 2 (scatter plot)
+# result.step1$data$Valid.cells.MT <- result.step1$data$fraction.MT < result.step2$config$filterSettings$methodSettings$absolute_threshold$maxFraction
+# FeatureScatter(result.step1$data, "nCount_RNA", "fraction.mt", group.by = "Valid.cells.MT")
+## or direcly plot with the plotData results
+# plot(result.step2$plotData$plot2$u, result.step2$plotData$plot2$`MT-content`, xlab = "UMIs", ylab = "MT-fraction")
+
+#
+# Step 3: Classifier filter
+#
+
+# Waiting filter 3
+#result.step3 <- classifier(result.step2$data, config.classifier)
+result.step3 <- result.step2
+
+#
+# Step 4: Number of genes vs number of UMIs filter
+#
+
+result.step4 <- numGenesVsNumUmis(result.step3$data, config.numGenesVsNumUmis)
+
+## plotData plots
+## Plot 1 (scatter plot with bands)
+# plot(result.step4$plotData$plot1$log10_UMIs, result.step4$plotData$plot1$log10_genes, ylab = "log10_genes", xlab = "log10_UMIs")
+# lines(result.step4$plotData$plot1$log10_UMIs, result.step4$plotData$plot1$upper_cutoff, col = "red")
+# lines(result.step4$plotData$plot1$log10_UMIs, result.step4$plotData$plot1$lower_cutoff, col = "red")
 
 
+#
+# Step 5: Doublet scores filter
+#
 
-message("Normalization step...")
+result.step5 <- doubletScores(result.step4$data, config.doubletScores)
+## plotData plots
+## Plot 1 (histogram with fraction MT)
+# h=hist(result.step5$plotData$plot1,plot=FALSE)
+# h$density = h$counts/sum(h$counts)
+# plot(h,freq=FALSE)
 
-####### Default  configuration settings
 
-nfeatures <- 2e3
-normalization_method <- "LogNormalize"
-normalization_scale_factor<- 10000
-pca_nPCs <- 30
-neighbors_metric <- "cosine"
-clustering_method <- 1 #"Louvain"
-clustering_resolution <- 0.5
-umap_min_distance <- 0.3
-umap_distance_metric <- "euclidean"
-tsne_perplexity <- min(30, ncol(scdata)/100)
-tsne_learning_rate <- max(200, ncol(scdata)/12)
+#
+# Step 6: Data integration
+#
 
-if(as.logical(config$samples[["multisample"]])){
-    
-    # Seurat V3 pipeline (see for other methods: https://satijalab.org/seurat/archive/v3.0/integration.html)
-    data.split <- SplitObject(scdata, split.by = "type")
-    for (i in 1:length(data.split)) {
-        data.split[[i]] <- NormalizeData(data.split[[i]], normalization.method = normalization_method, scale.factor = normalization_scale_factor, verbose = F)
-        data.split[[i]] <- FindVariableFeatures(data.split[[i]], selection.method = "vst", nfeatures = nfeatures, verbose = FALSE)
-    }
-    
-    data.anchors <- FindIntegrationAnchors(object.list = data.split, dims = 1:pca_nPCs, verbose = FALSE)
-    scdata <- IntegrateData(anchorset = data.anchors, dims = 1:pca_nPCs)
-    DefaultAssay(scdata) <- "integrated"
-    scdata <- Seurat::ScaleData(scdata, verbose = F)
-    
-    scdata <- FindVariableFeatures(scdata, selection.method = "vst", assay = "RNA", nfeatures = nfeatures, verbose = FALSE)
-    vars <- HVFInfo(object = scdata, assay = "RNA", selection.method = 'vst')
-    
-}else{
-    scdata <- Seurat::NormalizeData(scdata, normalization.method = normalization_method, scale.factor = normalization_scale_factor, verbose = F)
-    scdata <-Seurat::FindVariableFeatures(scdata, selection.method = "vst", nfeatures = nfeatures, verbose = F)
-    scdata<-Seurat::ScaleData(scdata, verbose = F)
-    
-    vars <- HVFInfo(object = scdata, assay = "RNA", selection.method = 'vst')
-    # In case of SCTransform
-    #vars <- HVFInfo(object = scdata, selection.method = 'sctransform')
-    #vars <- vars[, "residual_variance", drop = FALSE]
+result.step6 <- dataIntegration(result.step5$data, config.dataIntegration)
 
-}
+#
+# Step 7: Compute embedding
+#
 
-message("computing PCA reduction...")
-scdata<-Seurat::RunPCA(scdata, npcs = 50, features = VariableFeatures(object=scdata), verbose=FALSE)
+result.step7 <- computeEmbedding(result.step6$data, config.computeEmbedding)
 
-message("creating kNN graph...")
-scdata <- FindNeighbors(scdata, k.param = 20, annoy.metric = neighbors_metric, verbose=FALSE) #default method
 
-message("computing louvain clusters...")
-scdata <- FindClusters(scdata, resolution=clustering_resolution, verbose = FALSE, algorithm = clustering_method) #default method (Louvain clusters)
-
-message("Running embedding")
-scdata <- RunUMAP(scdata, reduction='pca', dims = 1:pca_nPCs, verbose = F, umap.method = "uwot-learn", min.dist = umap_min_distance, metric = umap_distance_metric)
-scdata <- RunTSNE(scdata, reduction = 'pca', dims = 1:pca_nPCs, perplexity = tsne_perplexity, learning.rate = tsne_learning_rate)
-
-## Adding more information to misc embedding
-
-scdata@misc$embedding_configuration <- list()
-
-scdata@misc$embedding_configuration[["UMAP"]] <- list()
-scdata@misc$embedding_configuration$UMAP["pca_nPCs"] <- pca_nPCs
-scdata@misc$embedding_configuration$UMAP["umap_min_distance"] <- umap_min_distance
-scdata@misc$embedding_configuration$UMAP["umap_distance_metric"] <- umap_distance_metric
-
-scdata@misc$embedding_configuration[["TSNE"]] <- list()
-scdata@misc$embedding_configuration$TSNE["pca_nPCs"] <- pca_nPCs
-scdata@misc$embedding_configuration$TSNE["tsne_perplexity"] <- tsne_perplexity
-scdata@misc$embedding_configuration$TSNE["tsne_learning_rate"] <- tsne_learning_rate
 
 message("Storing gene annotations...")
 scdata@misc[["gene_annotations"]] <- annotations
