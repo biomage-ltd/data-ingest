@@ -27,7 +27,7 @@ config <- RJSONIO::fromJSON("/input/meta.json")
 metadata <- check_config(scdata, config)
 
 message("Creating Seurat Object...")
-scdata <- Seurat::CreateSeuratObject(scdata$filtered, assay='RNA', min.cells=3, min.features=200, meta.data=metadata)
+seurat_obj <- Seurat::CreateSeuratObject(scdata$filtered, assay='RNA', min.cells=3, min.features=200, meta.data=metadata)
 
 ################################################
 ## GETTING METADATA AND ANNOTATION
@@ -37,24 +37,51 @@ message('finding genome annotations for genes...')
 organism <- config$organism
 
 annotations <- gprofiler2::gconvert(
-    query = rownames(scdata), organism = organism, target="ENSG", mthreshold = Inf, filter_na = FALSE)
+    query = rownames(seurat_obj), organism = organism, target="ENSG", mthreshold = Inf, filter_na = FALSE)
 
 if(organism%in%c("hsapiens", "mmusculus")){
   message("Adding MT information...")
   mt.features <-  annotations$input[grep("^mt-", annotations$name, ignore.case = T)]
-  scdata <- PercentageFeatureSet(scdata, features=mt.features , col.name = "percent.mt")
+  seurat_obj <- PercentageFeatureSet(seurat_obj, features=mt.features , col.name = "percent.mt")
 
  # To be consistent we will conver to fraction
-  scdata$fraction.mt <- scdata$percent.mt/100
+  seurat_obj$fraction.mt <- seurat_obj$percent.mt/100
 
 }
 
 message("getting scrublet results...")
-scores <- get_doublet_score(scdata)
+scores <- get_doublet_score(seurat_obj)
 
 message("Adding doublet scores information...")
-idt <- scores$barcodes[scores$barcodes%in%rownames(scdata@meta.data)]
-scdata@meta.data[idt, "doublet_scores"] <- scores[idt, "score"]
+idt <- scores$barcodes[scores$barcodes%in%rownames(seurat_obj@meta.data)]
+seurat_obj@meta.data[idt, "doublet_scores"] <- scores[idt, "score"]
+
+file_ed <-  "/output/pre-emptydrops-data.rds"
+if (file.exists(file_ed)) {
+  seurat_obj@tools$flag_filtered <- FALSE
+  message("getting emptyDrops results...")
+  emptydrops_out <- readRDS(file = "/output/pre-emptydrops-data.rds")
+
+  emptydrops_out_df <- emptydrops_out %>%
+    as.data.frame() %>%
+    rlang::set_names(~ paste0("emptyDrops_", .)) %>%
+    tibble::rownames_to_column("barcode")
+
+  # adding emptydrops data to meta.data for later filtering (using left join)
+  meta.data <- seurat_obj@meta.data  %>%
+    tibble::rownames_to_column("barcode") %>%
+    left_join(emptydrops_out_df)
+  rownames(meta.data) <- meta.data$barcode
+
+  message("Adding emptyDrops scores information...")
+  seurat_obj@meta.data <- meta.data
+  # dump emptyDrops results into tools slot
+  # seurat_obj@tools$CalculateEmptyDrops <- emptydrops_out
+} else {
+  # TODO: or should this be saved in config?
+  message("emptyDrops results not present, skipping...")
+  seurat_obj@tools$flag_filtered <- TRUE
+}
 
 
 ################################################
@@ -75,7 +102,7 @@ config.mitochondrialContent <- list(enabled="true", auto="true",
 )
 
 config.classifier <- list(enabled="true", auto="true", 
-    filterSettings = list(minProbability=0.82, bandwidth=-1, minProbabiliy=0.8, filterThreshold=-1)
+    filterSettings = list(minProbability=0.82, bandwidth=-1, filterThreshold=-1)
 )
 
 config.numGenesVsNumUmis <- list(enabled="true", auto="true", 
@@ -113,9 +140,8 @@ config.computeEmbedding <- list(enabled="true", auto="true",
 #
 
 # Waiting filter 1
-#result.step1 <- cellSizeDistribution(scdata, config.cellSizeDistribution)
-result.step1 <- list(data=scdata)
-
+result.step1 <- cellSizeDistribution(data = seurat_obj, config.cellSizeDistribution)
+# result.step1$config$filterSettings$minCellSize
 #
 # Step 2: Mitochondrial content filter
 #
@@ -123,6 +149,8 @@ result.step1 <- list(data=scdata)
 # Be aware that all the currents experiment does not have the slot fracion.mt, but they have the percent.mt. 
 # To be consistent, in this new version I have transformed to fracion.mt [Line 46]
 result.step2 <- mitochondrialContent(result.step1$data, config.mitochondrialContent)
+# Q seb: is this a global threshold accros all samples?
+result.step2$config$filterSettings
 
 ## plotData plots
 ## Plot 1 (histogram with fraction MT)
@@ -142,8 +170,8 @@ result.step2 <- mitochondrialContent(result.step1$data, config.mitochondrialCont
 #
 
 # Waiting filter 3
-#result.step3 <- classifier(result.step2$data, config.classifier)
-result.step3 <- result.step2
+result.step3 <- classifier(result.step2$data, config.classifier)
+# result.step3 <- result.step2
 
 #
 # Step 4: Number of genes vs number of UMIs filter
@@ -185,35 +213,35 @@ result.step7 <- computeEmbedding(result.step6$data, config.computeEmbedding)
 
 
 message("Storing gene annotations...")
-scdata@misc[["gene_annotations"]] <- annotations
+seurat_obj@misc[["gene_annotations"]] <- annotations
 
 message("Storing cells id...")
 # Keeping old version of ids starting from 0
-scdata$cells_id <- 0:(nrow(scdata@meta.data)-1)
+seurat_obj$cells_id <- 0:(nrow(seurat_obj@meta.data)-1)
 
 message("Storing dispersion...")
 # Convert to Gene Symbol
 vars$SYMBOL <- annotations$name[match(rownames(vars), annotations$input)]
 vars$ENSEMBL <- rownames(vars)
-scdata@misc[["gene_dispersion"]] <- vars
+seurat_obj@misc[["gene_dispersion"]] <- vars
 
 pdf("/output/umap.pdf")
-DimPlot(scdata, reduction = "umap")
+DimPlot(seurat_obj, reduction = "umap")
 dev.off()
 
 
 if(as.logical(config$samples$multisample)){
     pdf("/output/umap_type.pdf")
-    DimPlot(scdata, reduction = "umap", group.by = "type")
+    DimPlot(seurat_obj, reduction = "umap", group.by = "type")
     dev.off()
 }
 
 message("saving R object...")
-saveRDS(scdata, file = "/output/experiment.rds", compress = FALSE)
+saveRDS(seurat_obj, file = "/output/experiment.rds", compress = FALSE)
 
 message("saving cluster info...")
 write.table(
-    data.frame(Cells_ID = scdata$cells_id[names(scdata@active.ident)], Clusters=scdata@active.ident),
+    data.frame(Cells_ID = seurat_obj$cells_id[names(seurat_obj@active.ident)], Clusters=seurat_obj@active.ident),
     file = "/output/cluster-cells.csv",
     quote = F, col.names = F, row.names = F,
     sep = "\t"
@@ -222,14 +250,14 @@ write.table(
 if(as.logical(config$samples$multisample)){
     message("saving multsiample info...")
     write.table(
-        data.frame(Cells_ID = scdata$cells_id[names(scdata@active.ident)], type=scdata$type),
+        data.frame(Cells_ID = seurat_obj$cells_id[names(seurat_obj@active.ident)], type=seurat_obj$type),
         file = "/output/multisample-cells.csv",
         quote = F, col.names = F, row.names = F,
         sep = "\t"
     )
 }
 
-vars <- vars[rownames(scdata), c("ENSEMBL", "variance.standardized")]
+vars <- vars[rownames(seurat_obj), c("ENSEMBL", "variance.standardized")]
 message("Saving gene and cell data...")
 write.table(
     vars,
@@ -239,28 +267,28 @@ write.table(
 )
 
 write.table(
-    colnames(scdata),
+    colnames(seurat_obj),
     file = "/output/r-out-cells.csv",
     quote = F, col.names = F, row.names = F,
     sep = "\t"
 )
 
 write.table(
-    scdata@misc[["gene_annotations"]][scdata@misc[["gene_annotations"]]$input%in%rownames(scdata), ],
+    seurat_obj@misc[["gene_annotations"]][seurat_obj@misc[["gene_annotations"]]$input%in%rownames(seurat_obj), ],
     file = "/output/r-out-annotations.csv",
     quote = F, col.names = F, row.names = F,
     sep = "\t"
 )
 
 message("saving normalized matrix...")
-Matrix::writeMM(t(scdata@assays[[scdata@active.assay]]@data
+Matrix::writeMM(t(seurat_obj@assays[[seurat_obj@active.assay]]@data
                   ), file = "/output/r-out-normalized.mtx")
 
 message("saving raw matrix...")
 Matrix::writeMM(t(
-    scdata@assays[["RNA"]]@counts[
-        rownames(scdata),
-        colnames(scdata)
+    seurat_obj@assays[["RNA"]]@counts[
+        rownames(seurat_obj),
+        colnames(seurat_obj)
     ]),
     file = "/output/r-out-raw.mtx", verb
 )

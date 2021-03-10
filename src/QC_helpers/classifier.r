@@ -2,7 +2,8 @@
 ## STEP 3. Classifier filter 
 #################################################
 #
-#' @description Filters seurat object based on classifier filter
+#' @description Filters seurat object based on classifier filter using emptyDrops
+#               https://rdrr.io/github/MarioniLab/DropletUtils/man/emptyDrops.html
 #' @param config list containing the following information
 #'          - enable: true/false. Refering to apply or not the filter.
 #'          - auto: true/false. 'True' indicates that the filter setting need to be changed depending on some sensible value (it requires
@@ -11,29 +12,69 @@
 #'                  - minProbabiliy: 
 #'                  - filterThreshold: 
 #' @export return a list with the filtered seurat object by probabilities classifier, the config and the plot values
-classifier <- function(scdata, config){
+
+generate_default_values_classifier <- function(seurat_obj, config) {
+   
+        # HARDCODE
+        threshold <- 0.1
+   
+    return(threshold)
+}
+
+#' @description Filters seurat object based on mitochondrialContent
+#' @param config list containing the following information
+#'          - enable: true/false. Refering to apply or not the filter.
+#'          - auto: true/false. 'True' indicates that the filter setting need to be changed depending on some sensible value (it requires
+#'          to call generate_default_values_mitochondrialContent)
+#'          - filterSettings: slot with thresholds
+#'                  - method: String. Method to be used {absolute_threshold} 
+#'                  - methodSettings: List with the method as key and contain all the filterSettings for this specific method. 
+#'                          * absolute_threshold: based on a cut-off threshold
+#'                                  - maxFraction: Float. maximun pct MT-content that we considere for a alive cell
+#'                                  - binStep: Float. Bin size for the histogram
+#'                          * we are supposed to add more methods ....
+#' @export return a list with the filtered seurat object by mitochondrial content, the config and the plot values
+
+
+classifier <- function(seurat_obj, config){
+    # config$filterSettings = list(minProbability=0.82, bandwidth=-1, filterThreshold=-1)
 
     # Check wheter the filter is set to true or false
-    if(!as.logical(toupper(config$enabled)))
-        return(scdata)
-    
+    minProbability <- config$filterSettings$minProbability
+
+    plot1_data_1  <- seurat_obj@meta.data$emptyDrops_FDR
+
+    plot1_data_2  <- seurat_obj$nCount_RNA
+
     # Check if it is required to compute sensible values. From the function 'generate_default_values_classifier', it is expected
     # to get a list with two elements {minProbabiliy and filterThreshold}.
     if(as.logical(toupper(config$auto)))
-        config$filterSettings <- generate_default_values_classifier(scdata, config)
+        filterSettings <- generate_default_values_classifier(seurat_obj, config)
 
-    ################################################
-    ## TODO: Implement filtering
-    #################################################
+    # TODO: get flag from here: seurat_obj@tools$flag_filtered <- FALSE
+    if(!as.logical(toupper(config$enabled))) {
+        # is.cell <- meta.data$emptyDrops_FDR <= 0.01
+        # sum(is.cell, na.rm=TRUE) 
+        # table(Limited=meta.data$emptyDrops_Limited, Significant=is.cell)
+        # is.cell2<-is.cell
+        # is.cell2[is.na(is.cell2)]<-FALSE
+        # sce.filt<-sce[,is.cell2]
+        seurat_obj.filtered <- subset(seurat_obj, subset = emptyDrops_FDR <= minProbability)
+    } else {
+        seurat_obj.filtered <- seurat_obj
+    }
+    
+
+    # update config
+    config$filterSettings$minProbability <- minProbability
 
 
     # the result object will have to conform to this format: {data, config, plotData : {plot1, plot2}}
     result <- list(
-        data = scdata,
+        data = seurat_obj.filtered,
         config = config,
         plotData = list(
-            plot1 = c(),
-            plot2 = c()
+            plot1 = list(plot1_data_1, plot1_data_2)
         )
     )
 
