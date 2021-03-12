@@ -43,8 +43,10 @@ classifier <- function(seurat_obj, config){
     minProbability <- config$filterSettings$minProbability
 
     plot1_data_1  <- seurat_obj@meta.data$emptyDrops_FDR
+    names(plot1_data_1) <- rep("FDR", length(plot1_data_1))
 
-    plot1_data_2  <- seurat_obj$nCount_RNA
+    plot1_data_2  <- log10(seurat_obj$nCount_RNA)
+    names(plot1_data_2) <- rep("log_u", length(plot1_data_2))
 
     # Check if it is required to compute sensible values. From the function 'generate_default_values_classifier', it is expected
     # to get a list with two elements {minProbabiliy and filterThreshold}.
@@ -75,6 +77,11 @@ classifier <- function(seurat_obj, config){
         config = config,
         plotData = list(
             plot1 = list(plot1_data_1, plot1_data_2)
+            # List of 2
+            #  $ : Named num [1:11217] 0 0 0 0 0 ...
+            #   ..- attr(*, "names")= chr [1:11217] "FDR" "FDR" "FDR" "FDR" ...
+            #  $ : Named num [1:11217] 3483 6019 3892 3729 4734 ...
+            #   ..- attr(*, "names")= chr [1:11217] "u" "u" "u" "u" ...
         )
     )
 

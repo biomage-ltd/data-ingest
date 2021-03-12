@@ -2,6 +2,7 @@ library(Seurat)
 library(Matrix)
 require(data.table)
 library(gprofiler2)
+library(dplyr)
 
 set.seed(123)
 options(future.globals.maxSize= 1000 * 1024 ^ 2)
@@ -50,7 +51,9 @@ if(organism%in%c("hsapiens", "mmusculus")){
 }
 
 message("getting scrublet results...")
-scores <- get_doublet_score(seurat_obj)
+# Q to Juanlu: which object is this, scdata or seurat_obj?
+# [Bug] seb: it seems scdata, but in previous version it got overwritten (everthing was scdata), how could this ever work?
+scores <- get_doublet_score(scdata)
 
 message("Adding doublet scores information...")
 idt <- scores$barcodes[scores$barcodes%in%rownames(seurat_obj@meta.data)]
@@ -70,7 +73,7 @@ if (file.exists(file_ed)) {
   # adding emptydrops data to meta.data for later filtering (using left join)
   meta.data <- seurat_obj@meta.data  %>%
     tibble::rownames_to_column("barcode") %>%
-    left_join(emptydrops_out_df)
+    dplyr::left_join(emptydrops_out_df)
   rownames(meta.data) <- meta.data$barcode
 
   message("Adding emptyDrops scores information...")
@@ -140,8 +143,17 @@ config.computeEmbedding <- list(enabled="true", auto="true",
 #
 
 # Waiting filter 1
-result.step1 <- cellSizeDistribution(data = seurat_obj, config.cellSizeDistribution)
+result.step1 <- cellSizeDistribution(seurat_obj, config.cellSizeDistribution)
 # result.step1$config$filterSettings$minCellSize
+# str(result.step1$plotData)
+# List of 2
+#  $ plot1: Named num [1:11217] 3483 6019 3892 3729 4734 ...
+#   ..- attr(*, "names")= chr [1:11217] "u" "u" "u" "u" ...
+#  $ plot2:List of 2
+#   ..$ : Named num [1:11217] 3483 6019 3892 3729 4734 ...
+#   .. ..- attr(*, "names")= chr [1:11217] "u" "u" "u" "u" ...
+#   ..$ : Named int [1:11217] 6807 1276 1894 4438 16 6867 887 3494 10873 4161 ...
+#   .. ..- attr(*, "names")= chr [1:11217] "rank" "rank" "rank" "rank" ...
 #
 # Step 2: Mitochondrial content filter
 #
@@ -149,8 +161,7 @@ result.step1 <- cellSizeDistribution(data = seurat_obj, config.cellSizeDistribut
 # Be aware that all the currents experiment does not have the slot fracion.mt, but they have the percent.mt. 
 # To be consistent, in this new version I have transformed to fracion.mt [Line 46]
 result.step2 <- mitochondrialContent(result.step1$data, config.mitochondrialContent)
-# Q seb: is this a global threshold accros all samples?
-result.step2$config$filterSettings
+# result.step2$config$filterSettings
 
 ## plotData plots
 ## Plot 1 (histogram with fraction MT)
@@ -171,6 +182,7 @@ result.step2$config$filterSettings
 
 # Waiting filter 3
 result.step3 <- classifier(result.step2$data, config.classifier)
+# str(result.step3$plotData)
 # result.step3 <- result.step2
 
 #
@@ -221,6 +233,7 @@ seurat_obj$cells_id <- 0:(nrow(seurat_obj@meta.data)-1)
 
 message("Storing dispersion...")
 # Convert to Gene Symbol
+# [Bug] seb: vars is not initalized
 vars$SYMBOL <- annotations$name[match(rownames(vars), annotations$input)]
 vars$ENSEMBL <- rownames(vars)
 seurat_obj@misc[["gene_dispersion"]] <- vars
