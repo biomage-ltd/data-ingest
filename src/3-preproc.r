@@ -223,6 +223,7 @@ result.step6 <- dataIntegration(result.step5$data, config.dataIntegration)
 result.step7 <- computeEmbedding(result.step6$data, config.computeEmbedding)
 
 
+seurat_obj <- result.step7$data
 
 message("Storing gene annotations...")
 seurat_obj@misc[["gene_annotations"]] <- annotations
@@ -233,7 +234,9 @@ seurat_obj$cells_id <- 0:(nrow(seurat_obj@meta.data)-1)
 
 message("Storing dispersion...")
 # Convert to Gene Symbol
-# [Bug] seb: vars is not initalized
+# [Bug] seb: 
+# Error: Unable to find highly variable feature information for method 'vst'
+vars <- HVFInfo(object = seurat_obj, assay = "RNA", selection.method = 'vst') # to create vars
 vars$SYMBOL <- annotations$name[match(rownames(vars), annotations$input)]
 vars$ENSEMBL <- rownames(vars)
 seurat_obj@misc[["gene_dispersion"]] <- vars
