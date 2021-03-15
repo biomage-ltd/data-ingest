@@ -6,6 +6,7 @@ require(data.table)
 library(RJSONIO)
 library(ggplot2)
 library(MASS)
+library(DropletUtils)
 
 
 # Read10X_data function from Seurat V3 [1]
@@ -217,15 +218,50 @@ message("Loading configuration...")
 config <- RJSONIO::fromJSON("/input/meta.json")
 
 message("Creating raw dataframe...")
+# Note, scdata is not a seurat-object:
+# List of 1
+#  $ raw     :Formal class 'dgCMatrix' [package "Matrix"] with 6 slots
 scdata <- create_dataframe(config)
+
+
+message("calculating probability of barcodes being background noise...")
+
+# [HARDCODE]
+threshold_emptydrops <- 100
+# threshold_emptydrops <- 2000 # use this to simulate unfiltered data
+# automatically checking if data contains enough (50) barcodes that 
+# are confidently considered to be empty to serve as training set
+# not necessary as of now: sce <- as.SingleCellExperiment(scdata)
+nr_barcodes_ambient <- sum(colSums(scdata$raw) < threshold_emptydrops) 
+range(colSums(scdata$raw) ) 
+if (nr_barcodes_ambient < 50 ) {
+  flag_filtered <- TRUE
+  message("Found not enough [", nr_barcodes_ambient, "] ambient barcodes,
+          so data is considered to be pre-filtered")
+  message("Smallest nr of UMI for any barcode: ", min(colSums(scdata$raw)))
+  message("EmptyDrops filter will not be applied")
+} else {
+  flag_filtered <- FALSE
+  # if non-filtered, run emptyDrops and save results in file
+  message("Found enough [", nr_barcodes_ambient, "] ambient barcodes, 
+          so data is considered to be not filtered")
+  emptydrops_out <- emptyDrops(scdata$raw, lower = threshold_emptydrops) 
+  # TODO: save flag_filtered in DynamoDB or config (now: checking if file below does exists)
+  saveRDS(emptydrops_out, file = "/output/pre-emptydrops-data.rds", compress = FALSE)
+  # scdata@tools$CalculateEmptyDrops <- emptydrops_out
+}
 
 message("Filtering cells by size")
 # Default parameter by Seurat "min.features" of CreateSeuratObject fn (url: https://satijalab.org/seurat/archive/v3.2/pbmc3k_tutorial.html)
-scdata$filtered <- scdata$raw[, Matrix::colSums(scdata$raw>0)>=200]
+# [HARDCODE]
+min.features <- 200
+scdata$filtered <- scdata$raw[, Matrix::colSums(scdata$raw>0)>= min.features]
 
 message("Filtering cells by molecules/gene...")
 # Default parameter by Seurat "min.cells"  of CreateSeuratObject fn (url: https://satijalab.org/seurat/archive/v3.2/pbmc3k_tutorial.html)
-scdata$filtered <- scdata$filtered[Matrix::rowSums(scdata$filtered>0)>3,]
+# [HARDCODE]
+min.cells <- 3
+scdata$filtered <- scdata$filtered[Matrix::rowSums(scdata$filtered>0)> min.cells,]
 
 message("Exporting pre-scrublet scdata...")
 prepare_scrublet_table(scdata)

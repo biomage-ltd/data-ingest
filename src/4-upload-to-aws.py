@@ -97,6 +97,11 @@ def main():
     with open("/input/meta.json", "r") as f:
         config = json.load(f)
 
+    # read config related with QC pipeline
+    config_qc = None
+    with open("/output/config_qc.json", "r") as f:
+        config_qc = json.load(f)
+
     # Design cell_set cluster for DynamoDB
     cell_set = cell_sets_seurat()
 
@@ -130,7 +135,10 @@ def main():
         },
         "matrixPath": FILE_NAME,
         "cellSets": cellSets,
+        "processingConfig": config_qc, 
     }
+
+    print(experiment_data)
 
     access_key = os.getenv("AWS_ACCESS_KEY_ID")
     secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
