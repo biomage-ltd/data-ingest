@@ -227,8 +227,8 @@ scdata <- create_dataframe(config)
 message("calculating probability of barcodes being background noise...")
 
 # [HARDCODE]
-# threshold_emptydrops <- 100
-threshold_emptydrops <- 2000 # use this to simulate unfiltered data
+threshold_emptydrops <- 100
+# threshold_emptydrops <- 2000 # use this to simulate unfiltered data
 # automatically checking if data contains enough (50) barcodes that 
 # are confidently considered to be empty to serve as training set
 # not necessary as of now: sce <- as.SingleCellExperiment(scdata)

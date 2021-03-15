@@ -78,7 +78,8 @@ if (file.exists(file_ed)) {
 
   message("Adding emptyDrops scores information...")
   seurat_obj@meta.data <- meta.data
-  # dump emptyDrops results into tools slot
+  # previously (before joining into meta.data), results were just dumped as a additional slot
+  # leaving the code here in case bugs arise from above solution
   # seurat_obj@tools$CalculateEmptyDrops <- emptydrops_out
 } else {
   # TODO: or should this be saved in config?
@@ -183,7 +184,6 @@ result.step2 <- mitochondrialContent(result.step1$data, config.mitochondrialCont
 # Waiting filter 3
 result.step3 <- classifier(result.step2$data, config.classifier)
 # str(result.step3$plotData)
-# result.step3 <- result.step2
 
 #
 # Step 4: Number of genes vs number of UMIs filter

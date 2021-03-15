@@ -82,7 +82,7 @@ cellSizeDistribution <- function(seurat_obj, config) {
         data = seurat_obj,
         config = config,
         plotData = list(
-            plot1 = plot1_data,
+            cellSizeDistributionHistogram = plot1_data,
             # Q: are both plots updated for this filter?
             # Q: what is the format of plot2?
             # knee-plot: this is on a log-log scale, are logs calucated here or on the UI?
@@ -90,7 +90,7 @@ cellSizeDistribution <- function(seurat_obj, config) {
             # The y-axis displays the number of distinct UMIs for each barcode (here barcodes are proxies for cells).
             # cellRank_sorted.json: [{"u": 0, "rank": 17852}, {"u": 1, "rank": 17412},...]
             # plot2 = list(u = seurat_obj$nCount_RNA, rank = order(seurat_obj$nCount_RNA))
-            plot2 = list(plot1_data, plot2_data)
+            cellSizeDistributionKneePlot = list(plot1_data, plot2_data)
         )
     )
 
