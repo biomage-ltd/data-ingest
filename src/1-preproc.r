@@ -263,11 +263,8 @@ message("Filtering cells by molecules/gene...")
 min.cells <- 3
 scdata$filtered <- scdata$filtered[Matrix::rowSums(scdata$filtered>0)> min.cells,]
 
-print(str(scdata))
-
 message("Exporting pre-scrublet scdata...")
 prepare_scrublet_table(scdata)
-print("dummy")
 saveRDS(scdata, file = "/output/pre-doublet-data.rds", compress = FALSE)
 
 ####### CITATIONS #######
