@@ -235,7 +235,9 @@ seurat_obj$cells_id <- 0:(nrow(seurat_obj@meta.data)-1)
 message("Storing dispersion...")
 # Convert to Gene Symbol
 # [Bug] seb: 
-# Error: Unable to find highly variable feature information for method 'vst'
+# For multi-sample: Error: Unable to find highly variable feature information for method 'vst'
+# but this works (for each sample at a time)? do we even git multi-sample at this stage?
+# HVFInfo(object = data.split[[i]], assay = "RNA", selection.method = 'vst') # to create vars
 vars <- HVFInfo(object = seurat_obj, assay = "RNA", selection.method = 'vst') # to create vars
 vars$SYMBOL <- annotations$name[match(rownames(vars), annotations$input)]
 vars$ENSEMBL <- rownames(vars)
