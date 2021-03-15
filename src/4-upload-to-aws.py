@@ -139,7 +139,7 @@ def main():
     }
 
     print(experiment_data)
-"""
+
     access_key = os.getenv("AWS_ACCESS_KEY_ID")
     secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
     
@@ -167,5 +167,5 @@ def main():
     print("successful. experiment is now accessible at:")
     print(f"https://scp.biomage.net/experiments/{experiment_id}/data-exploration")
 
-"""
+
 main()

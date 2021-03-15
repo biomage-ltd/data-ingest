@@ -3,8 +3,6 @@ library(Matrix)
 library(dplyr)
 require(data.table)
 library(gprofiler2)
-library(dplyr)
-library(dplyr)
 
 set.seed(123)
 options(future.globals.maxSize= 1000 * 1024 ^ 2)
