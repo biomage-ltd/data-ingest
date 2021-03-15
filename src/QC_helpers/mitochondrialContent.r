@@ -66,7 +66,7 @@ mitochondrialContent <- function(scdata, config){
             # plot 1: histgram of MT-content
             # AAACCCAAGCGCCCAT-1 AAACCCAAGGTTCCGC-1 AAACCCACAGAGTTGG-1
             #              0.161              0.198              0.284  ...
-            plot1 = scdata$fraction.mt,
+            mitochondrialFractionHistogram = scdata$fraction.mt,
             # plot 2: There are two alternavitive:
             #           - Scatter plot with UMIs in the x-axis and MT-content in the y-axis
             #           --> code: plot2 = list(u=scdata$nCount_RNA.mt, "MT-content" = scdata$fraction.mt)
@@ -76,7 +76,7 @@ mitochondrialContent <- function(scdata, config){
             # We have decided to use the scatter plot, but I temporaly leave the other option in the comments. 
             # Q: Should we return from the R side the cells that are going to be removed? For this plot it is interesting to color the
             # cells that are going to be excluded. 
-            plot2 = list(u=scdata$nCount_RNA, "MT-content" = scdata$fraction.mt)
+            mitochondrialFractionLogHistogram = list(u=scdata$nCount_RNA, "MT-content" = scdata$fraction.mt)
         )
     )
 

@@ -61,7 +61,7 @@ doubletScores <- function(scdata, config){
             # plot 1: histgram of doublet scores
             # AAACCCAAGCGCCCAT-1 AAACCCAAGGTTCCGC-1 AAACCCACAGAGTTGG-1
             #              0.161              0.198              0.284  ...
-            plot1 = scdata$doublet_scores
+            doubletFilterHistogram = scdata$doublet_scores
         )
     )
 

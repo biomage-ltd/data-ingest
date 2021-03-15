@@ -103,7 +103,7 @@ numGenesVsNumUmis <- function(scdata, config){
             # bands that are conformed with the upper_cutoff and the lower_cutoff. We can print a band or dotted lines. 
             # Q: Should we return the point out the cells that are going to be excluded from the R side or this task can be done in 
             # the UI side.  
-            plot1 = list(log10_UMIs = df$molecules, log10_genes = df$genes, upper_cutoff = pb$upr, 
+            featuresvsUMIsscatterplot = list(log10_UMIs = df$molecules, log10_genes = df$genes, upper_cutoff = pb$upr, 
             lower_cutoff = pb$lwr)
         )
     )

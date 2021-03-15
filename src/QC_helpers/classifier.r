@@ -76,7 +76,7 @@ classifier <- function(seurat_obj, config){
         data = seurat_obj.filtered,
         config = config,
         plotData = list(
-            plot1 = list(plot1_data_1, plot1_data_2)
+            classifierEmptyDropsPlot = list(plot1_data_1, plot1_data_2)
             # List of 2
             #  $ : Named num [1:11217] 0 0 0 0 0 ...
             #   ..- attr(*, "names")= chr [1:11217] "FDR" "FDR" "FDR" "FDR" ...
