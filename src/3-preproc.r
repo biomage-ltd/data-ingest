@@ -1,19 +1,21 @@
 library(Seurat)
 library(Matrix)
+library(dplyr)
 require(data.table)
 library(gprofiler2)
+library(dplyr)
 library(dplyr)
 
 set.seed(123)
 options(future.globals.maxSize= 1000 * 1024 ^ 2)
-source("src/help.r")
-source("src/QC_helpers/cellSizeDistribution.r")
-source("src/QC_helpers/mitochondrialContent.r")
-source("src/QC_helpers/classifier.r")
-source("src/QC_helpers/numGenesVsNumUmis.r")
-source("src/QC_helpers/doubletScores.r")
-source("src/QC_helpers/dataIntegration.r")
-source("src/QC_helpers/computeEmbedding.r")
+source("/data-ingest/src/help.r")
+source("/data-ingest/src/QC_helpers/cellSizeDistribution.r")
+source("/data-ingest/src/QC_helpers/mitochondrialContent.r")
+source("/data-ingest/src/QC_helpers/classifier.r")
+source("/data-ingest/src/QC_helpers/numGenesVsNumUmis.r")
+source("/data-ingest/src/QC_helpers/doubletScores.r")
+source("/data-ingest/src/QC_helpers/dataIntegration.r")
+source("/data-ingest/src/QC_helpers/computeEmbedding.r")
 
 
 ################################################
@@ -51,9 +53,7 @@ if(organism%in%c("hsapiens", "mmusculus")){
 }
 
 message("getting scrublet results...")
-# Q to Juanlu: which object is this, scdata or seurat_obj?
-# [Bug] seb: it seems scdata, but in previous version it got overwritten (everthing was scdata), how could this ever work?
-scores <- get_doublet_score(scdata)
+scores <- get_doublet_score(seurat_obj)
 
 message("Adding doublet scores information...")
 idt <- scores$barcodes[scores$barcodes%in%rownames(seurat_obj@meta.data)]
@@ -120,8 +120,12 @@ config.doubletScores <- list(enabled="true", auto="true",
     filterSettings = list(probabilityThreshold = 0.2 , binStep = 0.05)
 )
 
+# BE CAREFUL! The method is based on config.json. For multisample only seuratv3, for unisample LogNormalize
+identified.method <- ifelse(as.logical(config$samples$multisample), "seuratv3", "unisample")
 config.dataIntegration <- list(enabled="true", auto="true", 
-    dataIntegration = list(method = "seuratv3", methodSettings = list(seuratv3=list(numGenes=2000, normalisation="LogNormalize"))),
+    dataIntegration = list( method = identified.method , 
+                        methodSettings = list(seuratv3=list(numGenes=2000, normalisation="LogNormalize"), 
+                                            unisample=list(numGenes=2000, normalisation="LogNormalize"))),
     dimensionalityReduction = list(method = "rpca", numPCs = 30, excludeGeneCategories = c())
 )
 
@@ -143,7 +147,7 @@ config.computeEmbedding <- list(enabled="true", auto="true",
 # Step 1: Cell size distribution filter
 #
 
-# Waiting filter 1
+message("Filter 1")
 result.step1 <- cellSizeDistribution(seurat_obj, config.cellSizeDistribution)
 # result.step1$config$filterSettings$minCellSize
 # str(result.step1$plotData)
@@ -155,10 +159,12 @@ result.step1 <- cellSizeDistribution(seurat_obj, config.cellSizeDistribution)
 #   .. ..- attr(*, "names")= chr [1:11217] "u" "u" "u" "u" ...
 #   ..$ : Named int [1:11217] 6807 1276 1894 4438 16 6867 887 3494 10873 4161 ...
 #   .. ..- attr(*, "names")= chr [1:11217] "rank" "rank" "rank" "rank" ...
+
 #
 # Step 2: Mitochondrial content filter
 #
 
+message("Filter 2")
 # Be aware that all the currents experiment does not have the slot fracion.mt, but they have the percent.mt. 
 # To be consistent, in this new version I have transformed to fracion.mt [Line 46]
 result.step2 <- mitochondrialContent(result.step1$data, config.mitochondrialContent)
@@ -181,6 +187,7 @@ result.step2 <- mitochondrialContent(result.step1$data, config.mitochondrialCont
 # Step 3: Classifier filter
 #
 
+message("Filter 3")
 # Waiting filter 3
 result.step3 <- classifier(result.step2$data, config.classifier)
 # str(result.step3$plotData)
@@ -189,6 +196,7 @@ result.step3 <- classifier(result.step2$data, config.classifier)
 # Step 4: Number of genes vs number of UMIs filter
 #
 
+message("Filter 4")
 result.step4 <- numGenesVsNumUmis(result.step3$data, config.numGenesVsNumUmis)
 
 ## plotData plots
@@ -202,6 +210,7 @@ result.step4 <- numGenesVsNumUmis(result.step3$data, config.numGenesVsNumUmis)
 # Step 5: Doublet scores filter
 #
 
+message("Filter 5")
 result.step5 <- doubletScores(result.step4$data, config.doubletScores)
 ## plotData plots
 ## Plot 1 (histogram with fraction MT)
@@ -214,12 +223,14 @@ result.step5 <- doubletScores(result.step4$data, config.doubletScores)
 # Step 6: Data integration
 #
 
+message("Filter 6")
 result.step6 <- dataIntegration(result.step5$data, config.dataIntegration)
 
 #
 # Step 7: Compute embedding
 #
 
+message("Filter 7")
 result.step7 <- computeEmbedding(result.step6$data, config.computeEmbedding)
 
 
@@ -237,8 +248,12 @@ message("Storing dispersion...")
 # [Bug] seb: 
 # For multi-sample: Error: Unable to find highly variable feature information for method 'vst'
 # but this works (for each sample at a time)? do we even git multi-sample at this stage?
-# HVFInfo(object = data.split[[i]], assay = "RNA", selection.method = 'vst') # to create vars
-vars <- HVFInfo(object = seurat_obj, assay = "RNA", selection.method = 'vst') # to create vars
+# Following the answer in this issue (https://github.com/satijalab/seurat/issues/2778) for Seurat V3, FindVariableFeatures
+# does not support for multisample. As a solution we will recompute FindVariables with RNA assays like it is a unisample experiment. 
+# HARDCODE: nfeature to 2000 (default value of the function)
+nfeautes <- 2000
+seurat_obj_dispersion <- FindVariableFeatures(seurat_obj, selection.method = "vst", assay = "RNA", nfeatures = nfeautes, verbose = FALSE)
+vars <- HVFInfo(object = seurat_obj_dispersion, assay = "RNA", selection.method = 'vst') # to create vars
 vars$SYMBOL <- annotations$name[match(rownames(vars), annotations$input)]
 vars$ENSEMBL <- rownames(vars)
 seurat_obj@misc[["gene_dispersion"]] <- vars
@@ -310,3 +325,22 @@ Matrix::writeMM(t(
     ]),
     file = "/output/r-out-raw.mtx", verb
 )
+
+
+################################################
+## SAVING CONFIG FILE
+################################################
+
+config <- list(
+    cellSizeDistribution = result.step1$config
+    , mitochondrialContent = result.step2$config
+    , classifier = result.step3$config
+    , numGenesVsNumUmis = result.step4$config
+    , doubletScores = result.step5$config
+    , dataIntegration = result.step6$config
+    , computeEmbedding = result.step7$config
+)
+
+exportJson <- RJSONIO::toJSON(config, pretty = T)
+message("config file...")
+write(exportJson, "/output/config_qc.json")

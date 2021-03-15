@@ -106,7 +106,7 @@ run_computeEmbedding <- function(scdata, config){
 
     if(config$clusteringSettings$method=="louvain"){
         clustering_method <- 1 #"Louvain"
-        clustering_resolution <- config$clusteringSettings$methodSettings$louvain$resolution
+        clustering_resolution <- config$clusteringSettings$methodSettings[[clustering_method]]$resolution
 
         # HARDCODE
         annoy.metric = "cosine"

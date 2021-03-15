@@ -12,7 +12,7 @@ get_doublet_score <- function(scdata) {
             col.names = c("score")
         )
 
-    scores <- as.data.frame(scores[, "barcodes" := colnames(scdata$filtered)])
+    scores <- as.data.frame(scores[, "barcodes" := colnames(scdata)])
     rownames(scores) <- scores$barcodes    
     return(scores)
 }

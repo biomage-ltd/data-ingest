@@ -65,12 +65,12 @@ dataIntegration <- function(scdata, config){
 run_dataIntegration <- function(scdata, config){
     
     method <- config$dataIntegration$method
-    nfeatures <- config.dataIntegration$dataIntegration$methodSettings[[method]]$numGenes
-    normalisation <- config.dataIntegration$dataIntegration$methodSettings[[method]]$normalisation
+    nfeatures <- config$dataIntegration$methodSettings[[method]]$numGenes
+    normalisation <- config$dataIntegration$methodSettings[[method]]$normalisation
     
     # Q: Should be the numPCs input for the RunPCA? Since we are looking into the explained variance I suggest to RunPCA with 50 and only
     # use this parameter for the data integration purpose.
-    numPCs <- config.dataIntegration$dimensionalityReduction$numPCs
+    numPCs <- config$dimensionalityReduction$numPCs
 
     #HARDCODE
     # We require just to get an overview of the data-integration
@@ -78,8 +78,7 @@ run_dataIntegration <- function(scdata, config){
     umap_distance_metric <- "euclidean"
 
     # Currently, we only support Seurat V3 pipeline for the multisample integration
-    # In the case of multisample, the variable type contains the sample names.
-    if(method=="seuratv3"){
+   if(method=="seuratv3"){
         data.split <- SplitObject(scdata, split.by = "type")
         for (i in 1:length(data.split)) {
             data.split[[i]] <- NormalizeData(data.split[[i]], normalization.method = normalisation, verbose = F)
