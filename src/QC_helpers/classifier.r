@@ -10,7 +10,6 @@
 #'          to call generate_default_values_classifier)
 #'          - filterSettings: slot with thresholds
 #'                  - minProbabiliy: 
-#'                  - filterThreshold: 
 #' @export return a list with the filtered seurat object by probabilities classifier, the config and the plot values
 
 generate_default_values_classifier <- function(seurat_obj, config) {
@@ -37,10 +36,10 @@ generate_default_values_classifier <- function(seurat_obj, config) {
 
 
 classifier <- function(seurat_obj, config){
-    # config$filterSettings = list(minProbability=0.82, bandwidth=-1, filterThreshold=-1)
+    # config$filterSettings = list(FDR=0.1)
 
     # Check wheter the filter is set to true or false
-    minProbability <- config$filterSettings$minProbability
+    FDR <- config$filterSettings$FDR
 
     plot1_data_1  <- seurat_obj@meta.data$emptyDrops_FDR
     names(plot1_data_1) <- rep("FDR", length(plot1_data_1))
@@ -49,26 +48,26 @@ classifier <- function(seurat_obj, config){
     names(plot1_data_2) <- rep("log_u", length(plot1_data_2))
 
     # Check if it is required to compute sensible values. From the function 'generate_default_values_classifier', it is expected
-    # to get a list with two elements {minProbabiliy and filterThreshold}.
+    # to get a list with two elements {FDR}.
     if(as.logical(toupper(config$auto)))
         filterSettings <- generate_default_values_classifier(seurat_obj, config)
 
     # TODO: get flag from here: seurat_obj@tools$flag_filtered <- FALSE
     if(!as.logical(toupper(config$enabled))) {
-        # is.cell <- meta.data$emptyDrops_FDR <= 0.01
+        # is.cell <- meta.data$emptyDrops_FDR <= 0.1
         # sum(is.cell, na.rm=TRUE) 
         # table(Limited=meta.data$emptyDrops_Limited, Significant=is.cell)
         # is.cell2<-is.cell
         # is.cell2[is.na(is.cell2)]<-FALSE
         # sce.filt<-sce[,is.cell2]
-        seurat_obj.filtered <- subset(seurat_obj, subset = emptyDrops_FDR <= minProbability)
+        seurat_obj.filtered <- subset(seurat_obj, subset = emptyDrops_FDR <= FDR)
     } else {
         seurat_obj.filtered <- seurat_obj
     }
     
 
     # update config
-    config$filterSettings$minProbability <- minProbability
+    config$filterSettings$FDR <- FDR
 
 
     # the result object will have to conform to this format: {data, config, plotData : {plot1, plot2}}

@@ -104,7 +104,7 @@ config.mitochondrialContent <- list(enabled="true", auto="true",
 )
 
 config.classifier <- list(enabled="true", auto="true", 
-    filterSettings = list(minProbability=0.82, bandwidth=-1, filterThreshold=-1)
+    filterSettings = list(FDR=0.1)
 )
 
 config.numGenesVsNumUmis <- list(enabled="true", auto="true", 
@@ -325,20 +325,93 @@ Matrix::writeMM(t(
 )
 
 
-################################################
-## SAVING CONFIG FILE
-################################################
 
+################################################
+## SAVING CONFIG FILE 
+################################################
+# 
+# We are going to store the final config to config_dataProcessing.json, in order to upload to dynamoDB.
+# The unisample experiments does not require any change, but for the multisample experiment we need
+# to add the filtering parameter for each sample (only in the steps that is required.)
+# We are going to differentiate in samples only in the steps:
+# --> cellSizeDistribution
+# --> numGenesVsNumUmis
+#
+# For both of them, we will run again the step fn for each sample (samples names are stored in metadata type)
+# For now, the cellSizeDistribution minCellSize return a list with the values for each sample. So we will leave
+# the mean of this list for the default generic value and re-compute again for each sample. 
+result.step1$config$filterSettings$minCellSize <- mean(result.step1$config$filterSettings$minCellSize)
+
+
+# Function to recompute the step fn and store the new config of each sample inside the latest config file 
+# We need to iterate per sample and compute separately the step fn.
+# Example of structure:
+# {
+# “filterSettings”: {
+#   “probabilityThreshold”: 0.2,
+#   “binStep”: 0.05
+# },
+# “sample-KO”: {
+#   “filterSettings”: {
+#     “probabilityThreshold”: 0.1,
+#     “binStep”: 100
+#   }
+# },
+# “sample-WT1": {
+#                     “filterSettings”: {
+#                         “probabilityThreshold”: 0.1,
+#                         “binStep”: 45
+#                     }
+#                 }
+# }
+
+add_config_per_sample <- function(step_fn, config, scdata, samples){
+  
+  # We upadte the config file, so to be able to access the raw config we create a copy
+  config.raw <- config
+  
+  for(sample in samples){
+    # Downsample the seurat object to a unisample experiment
+    scdata_sample <- subset(scdata, type %in% sample)
+    # Run the step fun with the unisample experiment and keep the config result
+    result_config <- step_fn(scdata_sample, config.raw)$config
+    # Inside the config of the samples we are not storing the auto and enable settings, so we remove them
+    result_config$auto <- NULL
+    result_config$enabled <- NULL
+    # Update config with the unisample thresholds
+    config[[sample]] <- result_config
+  }
+  
+  return(config)
+  
+}
+
+# Only recompute in multisample case
+if(as.logical(config$samples$multisample)){
+  result.step1$config <- add_config_per_sample(cellSizeDistribution, result.step1$config, seurat_obj, unique(seurat_obj$type))
+  result.step4$config <- add_config_per_sample(numGenesVsNumUmis, result.step4$config, seurat_obj, unique(seurat_obj$type))
+}
+
+# Save config for all steps
 config <- list(
-    cellSizeDistribution = result.step1$config
-    , mitochondrialContent = result.step2$config
-    , classifier = result.step3$config
-    , numGenesVsNumUmis = result.step4$config
-    , doubletScores = result.step5$config
-    , dataIntegration = result.step6$config
-    , computeEmbedding = result.step7$config
+  cellSizeDistribution = result.step1$config
+  , mitochondrialContent = result.step2$config
+  , classifier = result.step3$config
+  , numGenesVsNumUmis = result.step4$config
+  , doubletScores = result.step5$config
+  , dataIntegration = result.step6$config
+  , computeEmbedding = result.step7$config
 )
 
+# Export to json
 exportJson <- RJSONIO::toJSON(config, pretty = T)
+# The RJSONIO library add '' to boolean keys, so we will remove them.
+exportJson <- gsub('\"true\"', "true", exportJson)
+exportJson <- gsub('\"false\"', "false", exportJson)
+# Trnasform null into []
+exportJson <- gsub('null', "[]", exportJson)
 message("config file...")
-write(exportJson, "/output/config_qc.json")
+write(exportJson, "/output/config_dataProcessing.json")
+
+
+
