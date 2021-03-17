@@ -103,7 +103,8 @@ config.mitochondrialContent <- list(enabled="true", auto="true",
     )
 )
 
-config.classifier <- list(enabled="true", auto="true", 
+config.classifier <- list(enabled=tolower(as.character(!seurat_obj@tools$flag_filtered)) # emptyDrops results not present
+    , auto="true", 
     filterSettings = list(FDR=0.1)
 )
 
