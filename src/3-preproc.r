@@ -82,6 +82,7 @@ if (file.exists(file_ed)) {
 } else {
   # TODO: or should this be saved in config?
   message("emptyDrops results not present, skipping...")
+  seurat_obj@meta.data$emptyDrops_FDR <- NA
   seurat_obj@tools$flag_filtered <- TRUE
 }
 
