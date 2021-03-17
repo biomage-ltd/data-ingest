@@ -53,7 +53,7 @@ classifier <- function(seurat_obj, config){
         filterSettings <- generate_default_values_classifier(seurat_obj, config)
 
     # TODO: get flag from here: seurat_obj@tools$flag_filtered <- FALSE
-    if(!as.logical(toupper(config$enabled))) {
+    if(as.logical(toupper(config$enabled))) {
         # is.cell <- meta.data$emptyDrops_FDR <= 0.1
         # sum(is.cell, na.rm=TRUE) 
         # table(Limited=meta.data$emptyDrops_Limited, Significant=is.cell)
