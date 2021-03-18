@@ -28,19 +28,23 @@
 dataIntegration <- function(scdata, config){
 
     # Check wheter the filter is set to true or false
-    if (as.logical(toupper(config$enabled)))
-        # So far we only support Seurat V4
+    if (as.logical(toupper(config$enabled))){
+        # So far we only support Seurat V3
         scdata.integrated <- run_dataIntegration(scdata, config)
+            # Compute explained variance for the plot2
+        eigValues = (scdata.integrated@reductions$pca@stdev)^2  ## EigenValues
+        varExplained = eigValues / sum(eigValues)
+
+        numPCs <- config$dimensionalityReduction$numPCs
+        scdata.integrated <- Seurat::RunPCA(scdata.integrated, npcs = numPCs, features = VariableFeatures(object=scdata.integrated), verbose=FALSE)
+    }
+
     else
         scdata.integrated <- scdata
     
 
-    # For now config is not updated
+    # For now config is not updated, since there is not new changes
     # config <- ...
-
-    # Compute explained variance for the plot2
-    eigValues = (scdata.integrated@reductions$pca@stdev)^2  ## EigenValues
-    varExplained = eigValues / sum(eigValues)
 
     # the result object will have to conform to this format: {data, config, plotData : {plot1, plot2}}
     result <- list(

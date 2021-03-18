@@ -66,8 +66,8 @@ run_computeEmbedding <- function(scdata, config){
     # Embedding part
     #################
 
-    # HARDCODE. Common hardcode, need to be reviewd and try to persist from the previous step. 
-    pca_nPCs <- 30
+    # The threshold was selected in the dataIntegration step
+    pca_nPCs <- ncol(scdata@reductions$pca)
 
 
     if (config$embeddingSettings$method=="umap"){
