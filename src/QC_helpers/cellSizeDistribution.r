@@ -26,10 +26,14 @@ generate_default_values_cellSizeDistribution <- function(seurat_obj, config) {
   # is.null(Tool(seurat_obj, slot = "CalculateBarcodeInflections"))
   # Returns Seurat object with a new list in the `tools` slot,
   # `CalculateBarcodeInflections` including inflection point calculatio
+  
+  # We will compute the inflection point for the whole seurat_obj, so we create a metadata slot with a unique group
+  seurat_obj$group <- "group"
+  
   seurat_obj_tmp <- CalculateBarcodeInflections(
                                         object = seurat_obj,
                                         barcode.column = "nCount_RNA",
-                                        group.column = "orig.ident",
+                                        group.column = "group",
                                         # [HARDCODED]
                                         threshold.low = 1e2,
                                         threshold.high = NULL

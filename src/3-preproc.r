@@ -340,10 +340,6 @@ Matrix::writeMM(t(
 # --> numGenesVsNumUmis
 #
 # For both of them, we will run again the step fn for each sample (samples names are stored in metadata type)
-# For now, the cellSizeDistribution minCellSize return a list with the values for each sample. So we will leave
-# the mean of this list for the default generic value and re-compute again for each sample. 
-result.step1$config$filterSettings$minCellSize <- mean(result.step1$config$filterSettings$minCellSize)
-
 
 # Function to recompute the step fn and store the new config of each sample inside the latest config file 
 # We need to iterate per sample and compute separately the step fn.
