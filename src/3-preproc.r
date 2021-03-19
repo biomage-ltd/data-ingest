@@ -53,6 +53,18 @@ if(organism%in%c("hsapiens", "mmusculus")){
 message("getting scrublet results...")
 scores <- get_doublet_score(seurat_obj)
 
+pdf("/output/doublet_scores_hist.pdf")
+hist(scores$score, breaks = 100)
+dev.off()
+
+pdf("/output/nCount_vs_mito.fr_hist.pdf")
+plot(seurat_obj@meta.data$nCount_RNA, seurat_obj@meta.data$fraction.mt)
+dev.off()
+
+pdf("/output/GenesVsNumUmis.pdf")
+plot(seurat_obj@meta.data$nCount_RNA, seurat_obj@meta.data$nFeature_RNA)
+dev.off()
+
 message("Adding doublet scores information...")
 idt <- scores$barcodes[scores$barcodes%in%rownames(seurat_obj@meta.data)]
 seurat_obj@meta.data[idt, "doublet_scores"] <- scores[idt, "score"]
@@ -73,6 +85,22 @@ if (file.exists(file_ed)) {
     tibble::rownames_to_column("barcode") %>%
     dplyr::left_join(emptydrops_out_df)
   rownames(meta.data) <- meta.data$barcode
+
+
+  # some dignostic plots for empty-drops
+  pdf("/output/emptyDrops_Total_hist.pdf",width = 14, height = 14)
+  par(mfcol=c(2,2),cex.lab=2)
+  hist(log10(emptydrops_out_df$emptyDrops_Total), breaks = 300)
+  hist((emptydrops_out_df$emptyDrops_PValue), breaks = 300)
+  hist((emptydrops_out_df$emptyDrops_FDR), breaks = 300)
+  plot1_data_1  <- log10(meta.data$emptyDrops_FDR)
+  names(plot1_data_1) <- rep("FDR", length(plot1_data_1))
+  plot1_data_2  <- log10(meta.data$nCount_RNA)
+  names(plot1_data_2) <- rep("log_u", length(plot1_data_2))
+  plot(plot1_data_2,plot1_data_1)
+  table(cut(emptydrops_out_df$emptyDrops_FDR, breaks = c(0,0.0001,0.01,0.1,0.5,1)), useNA="ifany")
+  dev.off()
+
 
   message("Adding emptyDrops scores information...")
   seurat_obj@meta.data <- meta.data
