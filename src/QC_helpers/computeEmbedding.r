@@ -67,7 +67,7 @@ run_computeEmbedding <- function(scdata, config){
     #################
 
     # The threshold was selected in the dataIntegration step
-    pca_nPCs <- ncol(scdata@reductions$pca)
+    pca_nPCs <- scdata@misc[["numPCs"]]
 
 
     if (config$embeddingSettings$method=="umap"){

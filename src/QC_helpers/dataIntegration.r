@@ -35,8 +35,9 @@ dataIntegration <- function(scdata, config){
         eigValues = (scdata.integrated@reductions$pca@stdev)^2  ## EigenValues
         varExplained = eigValues / sum(eigValues)
 
-        numPCs <- config$dimensionalityReduction$numPCs
-        scdata.integrated <- Seurat::RunPCA(scdata.integrated, npcs = numPCs, features = VariableFeatures(object=scdata.integrated), verbose=FALSE)
+        # As a short solution, we are going to store an intermediate slot for the numPCs, since this parameter is required when performing
+        # the computeEmdedding. The main reason to do not have in the config.computeEmbedding is that this parameter does not change in the computeEmbedding step.
+        scdata.integrated@misc[["numPCs"]] <- config$dimensionalityReduction$numPCs
     }
 
     else
