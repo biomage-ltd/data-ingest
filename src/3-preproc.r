@@ -28,7 +28,7 @@ config <- RJSONIO::fromJSON("/input/meta.json")
 metadata <- check_config(scdata, config)
 
 message("Creating Seurat Object...")
-seurat_obj <- Seurat::CreateSeuratObject(scdata$filtered, assay='RNA', min.cells=3, min.features=200, meta.data=metadata)
+seurat_obj <- Seurat::CreateSeuratObject(scdata$filtered, assay='RNA', min.cells=1, min.features=1, meta.data=metadata)
 
 ################################################
 ## GETTING METADATA AND ANNOTATION
@@ -44,10 +44,6 @@ if(organism%in%c("hsapiens", "mmusculus")){
   message("Adding MT information...")
   mt.features <-  annotations$input[grep("^mt-", annotations$name, ignore.case = T)]
   seurat_obj <- PercentageFeatureSet(seurat_obj, features=mt.features , col.name = "percent.mt")
-
- # To be consistent we will conver to fraction
-  seurat_obj$fraction.mt <- seurat_obj$percent.mt/100
-
 }
 
 message("getting scrublet results...")
@@ -108,7 +104,7 @@ if (file.exists(file_ed)) {
   # leaving the code here in case bugs arise from above solution
   # seurat_obj@tools$CalculateEmptyDrops <- emptydrops_out
 } else {
-  # TODO: or should this be saved in config?
+  # Later on, when creating the config file, the enable will look the value of flag_filtered to deactivate the classifier filter
   message("emptyDrops results not present, skipping...")
   seurat_obj@meta.data$emptyDrops_FDR <- NA
   seurat_obj@tools$flag_filtered <- TRUE
@@ -120,9 +116,9 @@ if (file.exists(file_ed)) {
 ################################################
 
 #[HARDCODED]
-
-config.cellSizeDistribution <- list(enabled="true", auto="true", 
-    filterSettings = list(minCellSize=10800, binStep = 200)
+config.cellSizeDistribution <- list(enabled="true", 
+    auto="true", 
+    filterSettings = list(minCellSize=1080, binStep = 200)
 )
 
 config.mitochondrialContent <- list(enabled="true", auto="true", 
@@ -145,7 +141,7 @@ config.numGenesVsNumUmis <- list(enabled="true", auto="true",
 )
 
 config.doubletScores <- list(enabled="true", auto="true", 
-    filterSettings = list(probabilityThreshold = 0.2 , binStep = 0.05)
+    filterSettings = list(probabilityThreshold = 0.25, binStep = 0.05)
 )
 
 # BE CAREFUL! The method is based on config.json. For multisample only seuratv3, for unisample LogNormalize
@@ -159,7 +155,7 @@ config.dataIntegration <- list(enabled="true", auto="true",
 
 config.computeEmbedding <- list(enabled="true", auto="true", 
     embeddingSettings = list(method = "umap", methodSettings = list(
-                                umap = list(minimumDistance=0.2, distanceMetric="euclidean"), 
+                                umap = list(minimumDistance=0.3, distanceMetric="euclidean"), 
                                 tsne = list(perplexity=30, learningRate=200)
                             ) 
                         ), 
@@ -175,27 +171,31 @@ config.computeEmbedding <- list(enabled="true", auto="true",
 # Step 1: Cell size distribution filter
 #
 
-message("Filter 1")
-result.step1 <- cellSizeDistribution(seurat_obj, config.cellSizeDistribution)
+# message("Filter 1")
+# result.step1 <- cellSizeDistribution(seurat_obj, config.cellSizeDistribution)
+## Update config
+# config.cellSizeDistribution <- result.step1$config
 # result.step1$config$filterSettings$minCellSize
-# str(result.step1$plotData)
-# List of 2
-#  $ plot1: Named num [1:11217] 3483 6019 3892 3729 4734 ...
-#   ..- attr(*, "names")= chr [1:11217] "u" "u" "u" "u" ...
-#  $ plot2:List of 2
-#   ..$ : Named num [1:11217] 3483 6019 3892 3729 4734 ...
-#   .. ..- attr(*, "names")= chr [1:11217] "u" "u" "u" "u" ...
-#   ..$ : Named int [1:11217] 6807 1276 1894 4438 16 6867 887 3494 10873 4161 ...
-#   .. ..- attr(*, "names")= chr [1:11217] "rank" "rank" "rank" "rank" ...
+## str(result.step1$plotData)
+## List of 2
+##  $ plot1: Named num [1:11217] 3483 6019 3892 3729 4734 ...
+##   ..- attr(*, "names")= chr [1:11217] "u" "u" "u" "u" ...
+##  $ plot2:List of 2
+##   ..$ : Named num [1:11217] 3483 6019 3892 3729 4734 ...
+##   .. ..- attr(*, "names")= chr [1:11217] "u" "u" "u" "u" ...
+##   ..$ : Named int [1:11217] 6807 1276 1894 4438 16 6867 887 3494 10873 4161 ...
+##   .. ..- attr(*, "names")= chr [1:11217] "rank" "rank" "rank" "rank" ...
 
 #
 # Step 2: Mitochondrial content filter
 #
 
-message("Filter 2")
-# Be aware that all the currents experiment does not have the slot fracion.mt, but they have the percent.mt. 
-# To be consistent, in this new version I have transformed to fracion.mt [Line 46]
-result.step2 <- mitochondrialContent(result.step1$data, config.mitochondrialContent)
+# message("Filter 2")
+## Be aware that all the currents experiment does not have the slot fracion.mt, but they have the percent.mt. 
+## To be consistent, in this new version I have transformed to fracion.mt [Line 46]
+# result.step2 <- mitochondrialContent(result.step1$data, config.mitochondrialContent)
+## Update config
+# config.mitochondrialContent <- result.step2$config
 # result.step2$config$filterSettings
 
 ## plotData plots
@@ -215,17 +215,21 @@ result.step2 <- mitochondrialContent(result.step1$data, config.mitochondrialCont
 # Step 3: Classifier filter
 #
 
-message("Filter 3")
+# message("Filter 3")
 # Waiting filter 3
-result.step3 <- classifier(result.step2$data, config.classifier)
+# result.step3 <- classifier(result.step2$data, config.classifier)
 # str(result.step3$plotData)
+## Update config
+# config.classifier <- result.step3$config
 
 #
 # Step 4: Number of genes vs number of UMIs filter
 #
 
-message("Filter 4")
-result.step4 <- numGenesVsNumUmis(result.step3$data, config.numGenesVsNumUmis)
+# message("Filter 4")
+# result.step4 <- numGenesVsNumUmis(result.step3$data, config.numGenesVsNumUmis)
+## Update config
+# config.numGenesVsNumUmis <- result.step4$config
 
 ## plotData plots
 ## Plot 1 (scatter plot with bands)
@@ -238,8 +242,10 @@ result.step4 <- numGenesVsNumUmis(result.step3$data, config.numGenesVsNumUmis)
 # Step 5: Doublet scores filter
 #
 
-message("Filter 5")
-result.step5 <- doubletScores(result.step4$data, config.doubletScores)
+# message("Filter 5")
+# result.step5 <- doubletScores(result.step4$data, config.doubletScores)
+## Update config
+# config.doubletScores <- result.step5$config
 ## plotData plots
 ## Plot 1 (histogram with fraction MT)
 # h=hist(result.step5$plotData$plot1,plot=FALSE)
@@ -252,7 +258,9 @@ result.step5 <- doubletScores(result.step4$data, config.doubletScores)
 #
 
 message("Filter 6")
-result.step6 <- dataIntegration(result.step5$data, config.dataIntegration)
+result.step6 <- dataIntegration(seurat_obj, config.dataIntegration)
+# Update config
+config.dataIntegration <- result.step6$config
 
 #
 # Step 7: Compute embedding
@@ -260,6 +268,8 @@ result.step6 <- dataIntegration(result.step5$data, config.dataIntegration)
 
 message("Filter 7")
 result.step7 <- computeEmbedding(result.step6$data, config.computeEmbedding)
+# Update config
+config.computeEmbedding <- result.step7$config
 
 
 seurat_obj <- result.step7$data
@@ -273,9 +283,6 @@ seurat_obj$cells_id <- 0:(nrow(seurat_obj@meta.data)-1)
 
 message("Storing dispersion...")
 # Convert to Gene Symbol
-# [Bug] seb: 
-# For multi-sample: Error: Unable to find highly variable feature information for method 'vst'
-# but this works (for each sample at a time)? do we even git multi-sample at this stage?
 # Following the answer in this issue (https://github.com/satijalab/seurat/issues/2778) for Seurat V3, FindVariableFeatures
 # does not support for multisample. As a solution we will recompute FindVariables with RNA assays like it is a unisample experiment. 
 # HARDCODE: nfeature to 2000 (default value of the function)
@@ -413,20 +420,23 @@ add_config_per_sample <- function(step_fn, config, scdata, samples){
 }
 
 # Only recompute in multisample case
-if(as.logical(config$samples$multisample)){
-  result.step1$config <- add_config_per_sample(cellSizeDistribution, result.step1$config, seurat_obj, unique(seurat_obj$type))
-  result.step4$config <- add_config_per_sample(numGenesVsNumUmis, result.step4$config, seurat_obj, unique(seurat_obj$type))
+if (as.logical(config$samples$multisample)){
+  
+  config.cellSizeDistribution <- add_config_per_sample(cellSizeDistribution, config.cellSizeDistribution, seurat_obj, unique(seurat_obj$type))
+  config.numGenesVsNumUmis <- add_config_per_sample(numGenesVsNumUmis, config.numGenesVsNumUmis, seurat_obj, unique(seurat_obj$type))
+
 }
 
-# Save config for all steps
+# When we remove the steps from data-ingest we need to change here the default config. 
+# Save config for all steps. 
 config <- list(
-  cellSizeDistribution = result.step1$config
-  , mitochondrialContent = result.step2$config
-  , classifier = result.step3$config
-  , numGenesVsNumUmis = result.step4$config
-  , doubletScores = result.step5$config
-  , dataIntegration = result.step6$config
-  , computeEmbedding = result.step7$config
+  cellSizeDistribution = config.cellSizeDistribution
+  , mitochondrialContent = config.mitochondrialContent
+  , classifier = config.classifier
+  , numGenesVsNumUmis = config.numGenesVsNumUmis
+  , doubletScores = config.doubletScores
+  , dataIntegration = config.dataIntegration
+  , computeEmbedding = config.computeEmbedding
 )
 
 # Export to json
