@@ -115,11 +115,5 @@ run_computeEmbedding <- function(scdata, config){
 
     }
 
-    #################
-    # Coloring part
-    #################
-    color_pool <- RJSONIO::fromJSON("/data-ingest/src/color_pool.json")
-    scdata@meta.data$color_pool <- color_pool[as.numeric(scdata@active.ident)]
-
     return(scdata)
 }

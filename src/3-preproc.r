@@ -293,6 +293,13 @@ vars$SYMBOL <- annotations$name[match(rownames(vars), annotations$input)]
 vars$ENSEMBL <- rownames(vars)
 seurat_obj@misc[["gene_dispersion"]] <- vars
 
+
+message("Storing color pool...")
+# We store the color pool in a slot in order to be able to access it during computeEmbedding
+color_pool <- RJSONIO::fromJSON("/data-ingest/src/color_pool.json")
+seurat_obj@misc[["color_pool"]] <- color_pool
+
+
 pdf("/output/umap.pdf")
 DimPlot(seurat_obj, reduction = "umap")
 dev.off()

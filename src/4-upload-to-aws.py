@@ -63,7 +63,7 @@ def create_samples_table_multisample(config, experiment_id, uuid):
             "uuid" : uuid, 
             "species": config["organism"],
             "type": config["input"]["type"],
-            "cteatedData": createdDate.isoformat(),
+            "createdDate": createdDate.isoformat(),
             "lastModified": lastModified.isoformat(),
             "complete": True, 
             "error": False,
@@ -106,7 +106,7 @@ def create_samples_table_unisample(config, experiment_id, uuid):
         "uuid" : uuid, 
         "species": config["organism"],
         "type": config["input"]["type"],
-        "cteatedData": createdDate.isoformat(),
+        "createdDate": createdDate.isoformat(),
         "lastModified": lastModified.isoformat(),
         "complete": True, 
         "error": False,
@@ -261,6 +261,7 @@ def main():
     ).Table("experiments-production")
     dynamo.put_item(Item=experiment_data)
     
+
     print("uploading to dynamodb samples table...")
     dynamo = boto3.resource(
         "dynamodb",
