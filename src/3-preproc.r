@@ -53,6 +53,25 @@ pdf("/output/doublet_scores_hist.pdf")
 hist(scores$score, breaks = 100)
 dev.off()
 
+pdf("/output/mitochondrialFractionLogHistogram.pdf")
+hist(seurat_obj$fraction.mt, breaks=200)
+dev.off()
+
+pdf("/output/mitochondrialFractionLogScatter.pdf")
+plot(seurat_obj$nCount_RNA, seurat_obj$fraction.mt)
+dev.off()
+
+
+pdf("/output/UMI_hist.pdf",width = 14, height = 7)
+par(mfcol=c(1,2),cex.lab=2)
+hist(colSums(seurat_obj@assays$RNA@data), breaks=200)
+hist(rowSums(seurat_obj@assays$RNA@data), breaks=200)
+dev.off()
+
+genes_umi <- rowSums(seurat_obj@assays$RNA@data)
+counts <- colSums(seurat_obj@assays$RNA@data)
+
+
 pdf("/output/nCount_vs_mito.fr_hist.pdf")
 plot(seurat_obj@meta.data$nCount_RNA, seurat_obj@meta.data$fraction.mt)
 dev.off()
@@ -84,17 +103,17 @@ if (file.exists(file_ed)) {
 
 
   # some dignostic plots for empty-drops
-  pdf("/output/emptyDrops_Total_hist.pdf",width = 14, height = 14)
+  pdf("/output/emptyDrops_Total_hist.pdf",width = 16, height = 14)
   par(mfcol=c(2,2),cex.lab=2)
-  hist(log10(emptydrops_out_df$emptyDrops_Total), breaks = 300)
+  # hist(log10(emptydrops_out_df$emptyDrops_Total), breaks = 300)
   hist((emptydrops_out_df$emptyDrops_PValue), breaks = 300)
   hist((emptydrops_out_df$emptyDrops_FDR), breaks = 300)
   plot1_data_1  <- log10(meta.data$emptyDrops_FDR)
   names(plot1_data_1) <- rep("FDR", length(plot1_data_1))
   plot1_data_2  <- log10(meta.data$nCount_RNA)
   names(plot1_data_2) <- rep("log_u", length(plot1_data_2))
-  plot(plot1_data_2,plot1_data_1)
-  table(cut(emptydrops_out_df$emptyDrops_FDR, breaks = c(0,0.0001,0.01,0.1,0.5,1)), useNA="ifany")
+  plot(log10(meta.data$nCount_RNA),log10(meta.data$emptyDrops_FDR))
+  plot((meta.data$nCount_RNA),(meta.data$emptyDrops_FDR))
   dev.off()
 
 
@@ -109,6 +128,17 @@ if (file.exists(file_ed)) {
   seurat_obj@meta.data$emptyDrops_FDR <- NA
   seurat_obj@tools$flag_filtered <- TRUE
 }
+
+sink("/output/routput.Rout")
+print("UMI counts of highest expressed genes")
+tail(sort(genes_umi), n=30)
+print("median rowsums")
+median(rowSums(seurat_obj@assays$RNA@data))
+print("empty-drops table of FDR threshold categories (# UMIs for a given threshold interval")
+table(cut(emptydrops_out_df$emptyDrops_FDR, breaks = c(-Inf,0,0.0001,0.01,0.1,0.5,1)), useNA="ifany")
+print("empty-drops table of FDR threshold categories (# UMIs for a given threshold interval")
+table(cut(emptydrops_out_df$emptyDrops_PValue, breaks = c(-Inf,0,0.0001,0.01,0.1,0.5,1)), useNA="ifany")
+sink()
 
 
 ################################################
@@ -302,6 +332,10 @@ seurat_obj@misc[["color_pool"]] <- color_pool
 
 pdf("/output/umap.pdf")
 DimPlot(seurat_obj, reduction = "umap")
+dev.off()
+
+pdf("/output/pca.pdf")
+DimPlot(seurat_obj, reduction = "pca")
 dev.off()
 
 
