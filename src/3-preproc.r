@@ -13,7 +13,7 @@ source("/data-ingest/src/QC_helpers/classifier.r")
 source("/data-ingest/src/QC_helpers/numGenesVsNumUmis.r")
 source("/data-ingest/src/QC_helpers/doubletScores.r")
 source("/data-ingest/src/QC_helpers/dataIntegration.r")
-source("/data-ingest/src/QC_helpers/computeEmbedding.r")
+source("/data-ingest/src/QC_helpers/configureEmbedding.r")
 
 
 ################################################
@@ -183,7 +183,7 @@ config.dataIntegration <- list(enabled="true", auto="true",
     dimensionalityReduction = list(method = "rpca", numPCs = 30, excludeGeneCategories = c())
 )
 
-config.computeEmbedding <- list(enabled="true", auto="true", 
+config.configureEmbedding <- list(enabled="true", auto="true", 
     embeddingSettings = list(method = "umap", methodSettings = list(
                                 umap = list(minimumDistance=0.3, distanceMetric="euclidean"), 
                                 tsne = list(perplexity=30, learningRate=200)
@@ -297,9 +297,9 @@ config.dataIntegration <- result.step6$config
 #
 
 message("Filter 7")
-result.step7 <- computeEmbedding(result.step6$data, config.computeEmbedding)
+result.step7 <- configureEmbedding(result.step6$data, config.configureEmbedding)
 # Update config
-config.computeEmbedding <- result.step7$config
+config.configureEmbedding <- result.step7$config
 
 
 seurat_obj <- result.step7$data
@@ -325,7 +325,7 @@ seurat_obj@misc[["gene_dispersion"]] <- vars
 
 
 message("Storing color pool...")
-# We store the color pool in a slot in order to be able to access it during computeEmbedding
+# We store the color pool in a slot in order to be able to access it during configureEmbedding
 color_pool <- RJSONIO::fromJSON("/data-ingest/src/color_pool.json")
 seurat_obj@misc[["color_pool"]] <- color_pool
 
@@ -477,7 +477,7 @@ config <- list(
   , numGenesVsNumUmis = config.numGenesVsNumUmis
   , doubletScores = config.doubletScores
   , dataIntegration = config.dataIntegration
-  , computeEmbedding = config.computeEmbedding
+  , configureEmbedding = config.configureEmbedding
 )
 
 # Export to json

@@ -36,7 +36,7 @@ dataIntegration <- function(scdata, config){
         varExplained = eigValues / sum(eigValues)
 
         # As a short solution, we are going to store an intermediate slot for the numPCs, since this parameter is required when performing
-        # the computeEmdedding. The main reason to do not have in the config.computeEmbedding is that this parameter does not change in the computeEmbedding step.
+        # the computeEmdedding. The main reason to do not have in the config.configureEmbedding is that this parameter does not change in the configureEmbedding step.
         scdata.integrated@misc[["numPCs"]] <- config$dimensionalityReduction$numPCs
     }
 
