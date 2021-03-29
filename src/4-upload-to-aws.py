@@ -30,7 +30,7 @@ def create_samples_table_multisample(config, experiment_id, uuid):
     # Firstly, we identify the samples name. To do that we fetch the names of the folders (we suppose that the name
     # of the folders corresponds with the samples name)
     samples = [ name for name in os.listdir("/input") if os.path.isdir(os.path.join("/input", name)) ]
-    samples_table["ids"] = [ "sample-"+sample for sample in samples]
+    samples_table["ids"] = [ sample for sample in samples]
     # We crate a cnt variable to track the number of samples, since the key value of the is: sample1, sample2, ... samplen 
     # (with n as the total number of samples)
     cnt = 1
@@ -58,7 +58,7 @@ def create_samples_table_multisample(config, experiment_id, uuid):
             }
 
         # Add the whole information to each sample
-        samples_table["sample-"+sample] = {
+        samples_table[sample] = {
             "name" : sample, 
             "uuid" : uuid, 
             "species": config["organism"],
@@ -80,7 +80,7 @@ def create_samples_table_multisample(config, experiment_id, uuid):
 def create_samples_table_unisample(config, experiment_id, uuid):
     # In samples_table we are going to add the core of the information
     samples_table = {}
-    samples_table["ids"] = "sample-"+config["name"]
+    samples_table["ids"] = config["name"]
 
     # For the current datasets it could happen that they are not in the gz format, so we leave the alternative tsv format. 
     mime_options = {"tsv": "application/tsv", "gz" : "application/gzip", "mtx" :  "application/mtx"}
@@ -101,7 +101,7 @@ def create_samples_table_unisample(config, experiment_id, uuid):
             "success": True, 
             "error": False
         }
-    samples_table["sample-"+config["name"]] = {
+    samples_table[config["name"]] = {
         "name" : config["name"], 
         "uuid" : uuid, 
         "species": config["organism"],
