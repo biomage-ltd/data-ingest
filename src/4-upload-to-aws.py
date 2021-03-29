@@ -31,9 +31,7 @@ def create_samples_table_multisample(config, experiment_id, uuid):
     # of the folders corresponds with the samples name)
     samples = [ name for name in os.listdir("/input") if os.path.isdir(os.path.join("/input", name)) ]
     samples_table["ids"] = [ sample for sample in samples]
-    # We crate a cnt variable to track the number of samples, since the key value of the is: sample1, sample2, ... samplen 
-    # (with n as the total number of samples)
-    cnt = 1
+
     # For the current datasets it could happen that they are not in the gz format, so we leave the alternative tsv format. 
     mime_options = {"tsv": "application/tsv", "gz" : "application/gzip", "mtx" :  "application/mtx"}
 
@@ -70,8 +68,7 @@ def create_samples_table_multisample(config, experiment_id, uuid):
             "fileNames" : sample_files, 
             "files" : fileNames
         }
-        # Incremen the iterator for the sampleX
-        cnt = cnt+1
+
 
     return {"experiment_id": experiment_id, "samples" : samples_table}
 
