@@ -32,7 +32,7 @@
 #    }
 #},
 
-computeEmbedding <- function(scdata, config){
+configureEmbedding <- function(scdata, config){
 
     # Check wheter the filter is set to true or false
     if (as.logical(toupper(config$enabled)))
@@ -66,8 +66,8 @@ run_computeEmbedding <- function(scdata, config){
     # Embedding part
     #################
 
-    # HARDCODE. Common hardcode, need to be reviewd and try to persist from the previous step. 
-    pca_nPCs <- 30
+    # The threshold was selected in the dataIntegration step
+    pca_nPCs <- scdata@misc[["numPCs"]]
 
 
     if (config$embeddingSettings$method=="umap"){
