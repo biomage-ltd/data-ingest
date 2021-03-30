@@ -5,17 +5,18 @@
 #' 
 #' @export save barcodes and double scores
 
-get_doublet_score <- function(scdata) {
+get_doublet_score <- function(sample) {
     scores <-
         data.table::fread(
-            "/output/doublet-scores.csv",
-            col.names = c("score")
+            paste("/output/doublet-scores-", sample, ".csv", sep = ""),
         )
 
-    scores <- as.data.frame(scores[, "barcodes" := colnames(scdata)])
+    colnames(scores) <- c("barcodes", "doublet_scores")
     rownames(scores) <- scores$barcodes    
-    return(scores)
+    return(as.data.frame(scores))
 }
+
+
 
 # check_config function 
 #' @description Create metadata dataframe from config files
@@ -24,19 +25,17 @@ get_doublet_score <- function(scdata) {
 #' 
 #' @export save barcodes to keep
 
-check_config <- function(scdata, config){
+check_config <- function(scdata, sample, config){
     metadata <- NULL
-    
+    metadata <- data.frame(row.names = colnames(scdata), samples=rep(sample, ncol(scdata)))
+
     # Check if "type" exists on config file inside samples_info. If it is TRUE, 
-    # we are in multisample experiments and we create metadata with samples names
-    # and other attributes that are inside samples_info 
-    if("type" %in% names(config$samples$samples_info)){
-        metadata <- data.frame(row.names = colnames(scdata$filtered))
-        metadata[colnames(scdata$filtered), "type"] <- unlist(lapply(strsplit(colnames(scdata$filtered), "_"), `[`, 1))
-        
-        rest_metadata <- as.data.frame(config$samples$samples_info)
-        for(var in colnames(rest_metadata)[-which(colnames(rest_metadata)%in%"type")]){
-            metadata[, var] <- rest_metadata[, var][match(metadata$type, rest_metadata$type)]
+
+    if("metadata" %in% names(config)){
+        rest_metadata <- as.data.frame(config$metadata)
+        rest_metadata$sample <- ifelse(length(config$samples)>1, config$samples, sample)
+        for(var in rest_metadata){
+            metadata[, var] <- rest_metadata[, var][match(metadata$sample, rest_metadata$sample)]
         }
     }
     
