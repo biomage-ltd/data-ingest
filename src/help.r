@@ -1,42 +1,42 @@
 
 # get_doublet_score function 
 #' @description Get the cells with its doublet scores computed previously through scrublet
-#' @param scdata matrix with barcodes as columns
+#' @param sample name of the sample to retrieve the doublet scores
 #' 
-#' @export save barcodes and double scores
+#' @export data.frame with barcodes and doublet scores
 
-get_doublet_score <- function(scdata) {
+get_doublet_score <- function(sample) {
     scores <-
         data.table::fread(
-            "/output/doublet-scores.csv",
-            col.names = c("score")
+            paste("/output/doublet-scores-", sample, ".csv", sep = ""),
         )
 
-    scores <- as.data.frame(scores[, "barcodes" := colnames(scdata)])
+    colnames(scores) <- c("barcodes", "doublet_scores")
     rownames(scores) <- scores$barcodes    
-    return(scores)
+    return(as.data.frame(scores))
 }
+
+
 
 # check_config function 
 #' @description Create metadata dataframe from config files
 #' @param scdata matrix with barcodes as columns to assign metadata information
+#' @param sample name of the sample to retrieve the metadata
 #' @param config config list from meta.json
 #' 
-#' @export save barcodes to keep
+#' @export dataframe with metadata information of the sample
 
-check_config <- function(scdata, config){
+check_config <- function(scdata, sample, config){
     metadata <- NULL
-    
-    # Check if "type" exists on config file inside samples_info. If it is TRUE, 
-    # we are in multisample experiments and we create metadata with samples names
-    # and other attributes that are inside samples_info 
-    if("type" %in% names(config$samples$samples_info)){
-        metadata <- data.frame(row.names = colnames(scdata$filtered))
-        metadata[colnames(scdata$filtered), "type"] <- unlist(lapply(strsplit(colnames(scdata$filtered), "_"), `[`, 1))
-        
-        rest_metadata <- as.data.frame(config$samples$samples_info)
-        for(var in colnames(rest_metadata)[-which(colnames(rest_metadata)%in%"type")]){
-            metadata[, var] <- rest_metadata[, var][match(metadata$type, rest_metadata$type)]
+    metadata <- data.frame(row.names = colnames(scdata), samples=rep(sample, ncol(scdata)))
+
+    # Check if "metadata" exists on config. If it is TRUE, we have other metadata information that we are
+    # going to include in our experiment.
+    if("metadata" %in% names(config)){
+        rest_metadata <- as.data.frame(config$metadata)
+        rest_metadata$sample <- ifelse(length(config$samples)>1, config$samples, sample)
+        for(var in rest_metadata){
+            metadata[, var] <- rest_metadata[, var][match(metadata$sample, rest_metadata$sample)]
         }
     }
     
