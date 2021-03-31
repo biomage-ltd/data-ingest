@@ -40,9 +40,10 @@ for (sample in samples){
     seurat_obj_list[[sample]] <- readRDS(paste("/output/rds_samples/", sample,".rds", sep = ""))
 }
 
-# Merging samples
+# Merging samples and adding a prefix with the sample name. In pipeline we grep in barcodes to filter by sample.
 if (length(seurat_obj_list)==1){
     seurat_obj <- seurat_obj_list[[1]]
+    seurat_obj <- RenameCells(object = seurat_obj, add.cell.id = names(seurat_obj_list)[1])
 }else{
     seurat_obj <- merge(seurat_obj_list[[1]], y = seurat_obj_list[-1], add.cell.ids = c(samples))
 }

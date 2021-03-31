@@ -24,6 +24,11 @@ suppressWarnings(library(MASS))
 #' ------------------- features.tsv.gz
 #' ------------------- barcodes.tsv.gz
 #' ------------------- matrix.mtx.gz
+#'
+#'cell ranger output
+#'https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/output/matrices
+#'STAR solo conventions (drop in replacement for cell ranger):
+#'https://github.com/alexdobin/STAR/blob/master/docs/STARsolo.md
 #' @param samples samples to check
 #'
 #' @return TRUE if the design is correct FALSE otherwise
@@ -120,19 +125,17 @@ create_dataframe <- function(config){
 #' 
 #' @param scdata Sparse matrix with the counts for one sample.
 #' @param sample_name Name of the sample that we are preparing.
+#' @param min.cells Include features detected in at least this many cells. Default parameter by Seurat "min.cells" and "min.features" of CreateSeuratObject fn (url: https://satijalab.org/seurat/archive/v3.2/pbmc3k_tutorial.html)
+#' @param min.features Include cells where at least this many features are detected. Default parameter by Seurat "min.cells" and "min.features" of CreateSeuratObject fn (url: https://satijalab.org/seurat/archive/v3.2/pbmc3k_tutorial.html)
 #' 
 #' @export
-
-prepare_scrublet_table <- function(scdata, sample_name) {
+prepare_scrublet_table <- function(scdata, sample_name, min.cells = 3, min.features = 200) {
 
   message(
     "Saving ", sample_name, "..."
   )
-  # Default parameter by Seurat "min.cells" and "min.features" of CreateSeuratObject fn (url: https://satijalab.org/seurat/archive/v3.2/pbmc3k_tutorial.html)
-  # [HARDCODE]
-  min.cells <- 3
-  min.features <- 200
-  scdata.filtered <- scdata[Matrix::rowSums(scdata>0)>min.cells, Matrix::colSums(scdata>0)>=min.features]
+
+  scdata.filtered <- scdata[Matrix::rowSums(scdata>0)>=min.cells, Matrix::colSums(scdata>0)>=min.features]
   table <- data.table(
     as.matrix(
       t(

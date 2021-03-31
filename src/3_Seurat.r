@@ -52,11 +52,11 @@ scdata_list <- scdata_list[samples]
 #'
 #' @return in the case that the input data was pre-filtered, we return a flag in order to disable the classifier filter. 
 #' This flag is going to be store in the dynamoDB inside the samples-table.
-adding_metrics_and_annotation <- function(scdata, sample, config){
+adding_metrics_and_annotation <- function(scdata, sample, config, min.cells = 3, min.features = 200){
     message("Converting into seurat object sample --> ", sample)
     
     metadata <- check_config(scdata, sample, config)
-    seurat_obj <- Seurat::CreateSeuratObject(scdata, assay='RNA', min.cells=1, min.features=1, meta.data=metadata, project = config$name)
+    seurat_obj <- Seurat::CreateSeuratObject(scdata, assay='RNA', min.cells=min.cells, min.features=min.features, meta.data=metadata, project = config$name)
     
     message("[", sample, "] \t finding genome annotations for genes...")
     organism <- config$organism
