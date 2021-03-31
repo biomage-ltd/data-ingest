@@ -125,17 +125,16 @@ create_dataframe <- function(config){
 #' 
 #' @param scdata Sparse matrix with the counts for one sample.
 #' @param sample_name Name of the sample that we are preparing.
-#' @param min.cells Include features detected in at least this many cells. Default parameter by Seurat "min.cells" and "min.features" of CreateSeuratObject fn (url: https://satijalab.org/seurat/archive/v3.2/pbmc3k_tutorial.html)
-#' @param min.features Include cells where at least this many features are detected. Default parameter by Seurat "min.cells" and "min.features" of CreateSeuratObject fn (url: https://satijalab.org/seurat/archive/v3.2/pbmc3k_tutorial.html)
-#' 
+#' @param min.features Include cells where at least this many features are detected. Default parameter by Seurat and "min.features" of CreateSeuratObject fn (url: https://satijalab.org/seurat/archive/v3.2/pbmc3k_tutorial.html)
+#' We include this pre-minimun filter just to be able to run the scrublet (since with the raw matrix it fails).
 #' @export
-prepare_scrublet_table <- function(scdata, sample_name, min.cells = 3, min.features = 200) {
+prepare_scrublet_table <- function(scdata, sample_name, min.features = 200) {
 
   message(
     "Saving ", sample_name, "..."
   )
 
-  scdata.filtered <- scdata[Matrix::rowSums(scdata>0)>=min.cells, Matrix::colSums(scdata>0)>=min.features]
+  scdata.filtered <- scdata[, Matrix::colSums(scdata>0)>=min.features]
   table <- data.table(
     as.matrix(
       t(
