@@ -17,24 +17,41 @@ source("/data-ingest/src/help.r")
 ## LOADING SPARSE MATRIX AND CONFIGURATION
 ################################################
 
+# Loading the list with the raw sparse matrixs
 message("reloading old matrices...")
 scdata_list <- readRDS("/output/pre-doublet-scdata_list.rds")
 
 message("Loading configuration...")
 config <- RJSONIO::fromJSON("/input/meta.json")
 
+# Check which samples have been selected. Otherwiser we are going to use all of them. 
 if (length(config$samples)>0){
     samples <- config$samples
 }else{
     samples <- names(scdata_list)
 }
-
 scdata_list <- scdata_list[samples]
 
 ################################################
 ## GETTING METADATA AND ANNOTATION
 ################################################
 
+# adding_metrics_and_annotation function
+#' @description We are going to process one sample in a seurat object. For it, we need to do:
+#'  - Identify the possible metadata in the config file
+#'  - Create a seurat object with the input of an sparse matrix
+#'  - Annotate the gene in order to identify MT content in hsapiens and mmusculus
+#'  - Computing MT-content
+#'  - Getting scrublets
+#'  - Getting emptyDrops
+#'  - Identify flag_filtered
+#'  - Save the rds with the seurat object for 1 sample
+#' @param scdata Raw sparse matrix with the counts for one sample.
+#' @param sample_name Name of the sample that we are preparing.
+#' @param config Config of the project
+#'
+#' @return in the case that the input data was pre-filtered, we return a flag in order to disable the classifier filter. 
+#' This flag is going to be store in the dynamoDB inside the samples-table.
 adding_metrics_and_annotation <- function(scdata, sample, config){
     message("Converting into seurat object sample --> ", sample)
     
@@ -105,8 +122,9 @@ adding_metrics_and_annotation <- function(scdata, sample, config){
 message("Creating Seurat Object...")
 flag_filtered <- sapply(names(scdata_list), function(sample_name) adding_metrics_and_annotation(scdata_list[[sample_name]], sample_name, config))
 
+# Since we need to store the flag_filtered in the dynamoDB, we need to persist in a file just to be read in 5_Upload-to-aws.py
 df_flag_filtered <- data.frame(samples=samples, flag_filtered=ifelse(flag_filtered, "Filtered", "Unfiltered"))
 write.table(df_flag_filtered, "/output/df_flag_filtered.txt", col.names = TRUE, row.names = FALSE, sep = "\t", quote = FALSE)
 
-message("Finish step 3.")
+message("Step 3 completed.")
 

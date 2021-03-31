@@ -31,7 +31,7 @@ def calculate_checksum(filenames):
             hash.update(open(fn, "rb").read())
     return hash.hexdigest()
 
-# This function crate the table information for samples. As input it requires the experiment id and the user uuid.  
+# This function crate the table information for samples. As input it requires the experiment id and the config.  
 def create_samples_table(config, experiment_id):
     # In samples_table we are going to add the core of the information
     samples_table = {}
@@ -44,7 +44,7 @@ def create_samples_table(config, experiment_id):
     )
 
     # Firstly, we identify the samples name. To do that we fetch the names of the folders (we suppose that the name
-    # of the folders corresponds with the samples name)
+    # of the folders corresponds with the samples name) or direclty get them from the config
     if len(config["samples"])>1:
         samples = config["samples"]
     else:
@@ -57,7 +57,7 @@ def create_samples_table(config, experiment_id):
 
     for sample in samples:
         
-        # Filtered flag
+        # flag filtered
         preFiltered = df_prefilered.loc[df_prefilered.samples==sample, "flag_filtered"].tolist()[0]=="Filtered"
 
         # Identify datetime
@@ -187,11 +187,7 @@ def main():
         "cellSets": cellSets,
         "processingConfig": config_dataProcessing, 
     }
-
-    print(experiment_data)
-    print(samples_data)
-
-"""
+    
     # Conver to float all decimals
     experiment_data = json.loads(json.dumps(experiment_data), parse_float=Decimal)
     samples_data = json.loads(json.dumps(samples_data), parse_float=Decimal)
@@ -233,5 +229,8 @@ def main():
     
     print("successful. experiment is now accessible at:")
     print(f"https://scp.biomage.net/experiments/{experiment_id}/data-exploration")
-"""
+
 main()
+
+print("Step 5 completed.")
+

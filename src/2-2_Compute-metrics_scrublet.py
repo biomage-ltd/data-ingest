@@ -14,8 +14,8 @@ import os
 with open("/input/meta.json") as f:
     config = json.load(f)
 
+# Check which samples have been selected. Otherwiser we are going to use all of them. 
 samples = config["samples"]
-
 if len(samples) == 0:
     samples = [
         name
@@ -26,10 +26,14 @@ if len(samples) == 0:
 print("Now running scrublet...")
 
 for sample in samples:
+    # Reading pre-filtered matrix. From 1_Preproc.r we have stored one pre-doublet-matrix per sample
     df = pandas.read_csv("/output/pre-doublet-matrix-" + sample + ".csv", index_col=0)
     print("Running sample " + sample)
+    # Computing scrublet
     scrub = scr.Scrublet(df)
     doublet_scores_sample, _ = scrub.scrub_doublets()
+    # We will store the doublet-scores in the following format
+    ####  Barcode   score
     with open("/output/doublet-scores-" + sample + ".csv", "w") as f:
         f.writelines(
             (
@@ -37,3 +41,5 @@ for sample in samples:
                 for i in range(len(df.index))
             )
         )
+
+print("Step 2-2 completed.")

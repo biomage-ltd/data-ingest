@@ -14,6 +14,7 @@ scdata_list <- readRDS("/output/pre-doublet-scdata_list.rds")
 message("Loading configuration...")
 config <- RJSONIO::fromJSON("/input/meta.json")
 
+# Check which samples have been selected. Otherwiser we are going to use all of them. 
 if (length(config$samples)>0){
     samples <- config$samples
 }else{
@@ -22,9 +23,15 @@ if (length(config$samples)>0){
 
 scdata_list <- scdata_list[samples]
 
+# compute_emptydrops function
+#' @description Save the result of emptyDrops per sample. 
+#' @param scdata Raw sparse matrix with the counts for one sample.
+#' @param sample_name Name of the sample that we are preparing.
+#'
+#' @return 
 compute_emptydrops <- function(scdata, sample_name){
   
-    message("Sample --> ", sample_name, "...")
+  message("Sample --> ", sample_name, "...")
 
   # [HARDCODE]
   threshold_emptydrops <- 100
@@ -55,3 +62,4 @@ compute_emptydrops <- function(scdata, sample_name){
 message("calculating probability of barcodes being background noise...")
 lapply(names(scdata_list), function(sample_name) compute_emptydrops(scdata_list[[sample_name]], sample_name))
 
+message("Step 2-1 completed.")

@@ -26,6 +26,7 @@ source("/data-ingest/src/QC_helpers/numGenesVsNumUmis_config.r")
 message("Loading configuration...")
 config <- RJSONIO::fromJSON("/input/meta.json")
 
+# Check which samples have been selected. Otherwiser we are going to use all of them. 
 if (length(config$samples)>0){
     samples <- config$samples
 }else{
@@ -39,6 +40,7 @@ for (sample in samples){
     seurat_obj_list[[sample]] <- readRDS(paste("/output/rds_samples/", sample,".rds", sep = ""))
 }
 
+# Merging samples
 if (length(seurat_obj_list)==1){
     seurat_obj <- seurat_obj_list[[1]]
 }else{
@@ -160,17 +162,17 @@ write.table(
 )
 
 message("saving normalized matrix...")
-#Matrix::writeMM(t(seurat_obj@assays[[seurat_obj@active.assay]]@data
-#                  ), file = "/output/r-out-normalized.mtx")
+Matrix::writeMM(t(seurat_obj@assays[[seurat_obj@active.assay]]@data
+                  ), file = "/output/r-out-normalized.mtx")
 
 message("saving raw matrix...")
-#Matrix::writeMM(t(
-#    seurat_obj@assays[["RNA"]]@counts[
-#        rownames(seurat_obj),
-#        colnames(seurat_obj)
-#    ]),
-#    file = "/output/r-out-raw.mtx", verb
-#)
+Matrix::writeMM(t(
+    seurat_obj@assays[["RNA"]]@counts[
+        rownames(seurat_obj),
+        colnames(seurat_obj)
+    ]),
+    file = "/output/r-out-raw.mtx", verb
+)
 
 
 
@@ -314,5 +316,6 @@ exportJson <- gsub('null', "[]", exportJson)
 message("config file...")
 write(exportJson, "/output/config_dataProcessing.json")
 
+message("Step 4 completed.")
 
 
