@@ -94,7 +94,7 @@ def create_samples_table(config, experiment_id):
         }
 
 
-    return {"experiment_id": experiment_id, "samples" : samples_table}
+    return {"experimentId": experiment_id, "samples" : samples_table}
 
 
 # cell_sets fn for seurat samples name
