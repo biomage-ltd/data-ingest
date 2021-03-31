@@ -195,7 +195,7 @@ config.mitochondrialContent <- list(enabled="true", auto="true",
 
 config.classifier <- list(enabled=tolower(as.character(!any_filtered)) # emptyDrops results not present
     , auto="true", 
-    filterSettings = list(FDR=0.1)
+    filterSettings = list(FDR=0.01)
 )
 
 config.numGenesVsNumUmis <- list(enabled="true", auto="true", 
