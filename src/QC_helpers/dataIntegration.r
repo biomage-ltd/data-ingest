@@ -83,7 +83,7 @@ run_dataIntegration <- function(scdata, config){
     umap_distance_metric <- "euclidean"
 
     # Currently, we only support Seurat V3 pipeline for the multisample integration
-   if(method=="seuratv3"){
+   if(method=="seuratv4"){
         data.split <- SplitObject(scdata, split.by = "type")
         for (i in 1:length(data.split)) {
             data.split[[i]] <- NormalizeData(data.split[[i]], normalization.method = normalisation, verbose = F)
