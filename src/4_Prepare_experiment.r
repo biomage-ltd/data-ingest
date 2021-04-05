@@ -214,8 +214,8 @@ config.doubletScores <- list(enabled="true", auto="true",
 identified.method <- ifelse(length(samples)==1, "unisample", "seuratv4")
 config.dataIntegration <- list(enabled="true", auto="true", 
     dataIntegration = list( method = identified.method , 
-                        methodSettings = list(seuratv4=list(numGenes=2000, normalisation="LogNormalize"), 
-                                            unisample=list(numGenes=2000, normalisation="LogNormalize"))),
+                        methodSettings = list(seuratv4=list(numGenes=2000, normalisation="logNormalize"), 
+                                            unisample=list(numGenes=2000, normalisation="logNormalize"))),
     dimensionalityReduction = list(method = "rpca", numPCs = 30, excludeGeneCategories = c())
 )
 
