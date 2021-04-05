@@ -98,8 +98,17 @@ def create_samples_table(config, experiment_id):
 
 
 # cell_sets fn for seurat samples name
-def meta_sets():
+def samples_sets():
     # construct new cell set group
+
+    samples_annotations = pandas.read_csv(
+        "/output/samples-cells.csv",
+        sep="\t",
+        names=["Cells_ID", "Value"],
+        na_values=["None"],
+    )
+    
+
     cell_set = {
         "key": "sample",
         "name": "Samples",
@@ -108,15 +117,8 @@ def meta_sets():
         "type": "metadataCategorical",
     }
 
-    meta_annotations = pandas.read_csv(
-        "/output/multisample-cells.csv",
-        sep="\t",
-        names=["Cells_ID", "type"],
-        na_values=["None"],
-    )
-    
-    for sample in meta_annotations["type"].unique():
-        view = meta_annotations[meta_annotations.type == sample]["Cells_ID"]
+    for sample in samples_annotations["Value"].unique():
+        view = samples_annotations[samples_annotations.Value == sample]["Cells_ID"]
         cell_set["children"].append(
             {
                 "key": f"sample-{sample}",
@@ -128,6 +130,45 @@ def meta_sets():
 
     return cell_set
 
+
+# cell_sets fn for seurat metadata information
+def meta_sets():
+    meta_annotations = pandas.read_csv(
+        "/output/metadata-cells.csv",
+        sep="\t",
+        header=0,
+    )
+    
+    cell_set_list = list()
+
+    # The first column is the cells_id, the rest is the metadata information
+    for i in range(1, len(meta_annotations.columns)):
+
+        # keep as key and name the name of the column
+        key = meta_annotations.columns[i]
+        name = meta_annotations.columns[i]
+
+        cell_set = {
+            "key": key,
+            "name": name,
+            "rootNode": True,
+            "children": [],
+            "type": "metadataCategorical",
+        }
+
+        for value in meta_annotations.iloc[:, i].unique():
+            view = meta_annotations[meta_annotations.iloc[:, i] == value]["cells_id"]
+            cell_set["children"].append(
+                {
+                    "key":   key+f"-{value}",
+                    "name": f"{value}",
+                    "color": COLOR_POOL.pop(0),
+                    "cellIds": [int(d) for d in view.tolist()],
+                }
+            )
+
+        cell_set_list.append(cell_set)
+    return cell_set_list
 
 def main():
     experiment_id = calculate_checksum(
@@ -158,18 +199,16 @@ def main():
             }
 
     samples_data = create_samples_table(config, experiment_id)
+    samples_set = samples_sets()
 
-    if len(config['samples']) > 1:
+    if "metadata" in config.keys():
         # Design cell_set meta_data for DynamoDB
         meta_set = meta_sets()
-        cellSets = [meta_set, scratchpad]
-
-        # Design samples-table for DynamoDB
+        cellSets = [samples_set, scratchpad] + meta_set
 
     else:
         # Design cell_set meta_data for DynamoDB
-        cellSets = [scratchpad]
-
+        cellSets = [scratchpad, samples_set]
 
     print("Experiment name is", config["name"])
 
@@ -194,6 +233,7 @@ def main():
     
     access_key = os.getenv("AWS_ACCESS_KEY_ID")
     secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+
 
     print("uploading to dynamodb experiments table...")
     dynamo = boto3.resource(
@@ -229,6 +269,8 @@ def main():
     
     print("successful. experiment is now accessible at:")
     print(f"https://scp.biomage.net/experiments/{experiment_id}/data-exploration")
+
+
 
 main()
 
