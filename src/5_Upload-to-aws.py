@@ -50,7 +50,7 @@ def create_samples_table(config, experiment_id):
     else:
         samples = [ name for name in os.listdir("/input") if os.path.isdir(os.path.join("/input", name)) ]
     
-    samples_table["ids"] = [ sample for sample in samples]
+    samples_table["ids"] = [ "sample-"+sample for sample in samples]
 
     # For the current datasets it could happen that they are not in the gz format, so we leave the alternative tsv format. 
     mime_options = {"tsv": "application/tsv", "gz" : "application/gzip", "mtx" :  "application/mtx"}
@@ -79,7 +79,7 @@ def create_samples_table(config, experiment_id):
             }
 
         # Add the whole information to each sample
-        samples_table[sample] = {
+        samples_table["sample-"+sample] = {
             "name" : sample, 
             "uuid" : str(uuid.uuid4()), 
             "species": config["organism"],
