@@ -227,14 +227,14 @@ config.doubletScores <- list(enabled="true", auto="true",
 
 # BE CAREFUL! The method is based on config.json. For multisample only seuratv4, for unisample LogNormalize
 identified.method <- ifelse(length(samples)==1, "unisample", "seuratv4")
-config.dataIntegration <- list(enabled="true", auto="true", 
+config.dataIntegration <- list(auto="true", 
     dataIntegration = list( method = identified.method , 
                         methodSettings = list(seuratv4=list(numGenes=2000, normalisation="logNormalize"), 
                                             unisample=list(numGenes=2000, normalisation="logNormalize"))),
     dimensionalityReduction = list(method = "rpca", numPCs = 30, excludeGeneCategories = c())
 )
 
-config.configureEmbedding <- list(enabled="true", auto="true", 
+config.configureEmbedding <- list(auto="true", 
     embeddingSettings = list(method = "umap", methodSettings = list(
                                 umap = list(minimumDistance=0.3, distanceMetric="euclidean"), 
                                 tsne = list(perplexity=min(30, ncol(seurat_obj)/100), learningRate=max(200, ncol(seurat_obj)/12))
