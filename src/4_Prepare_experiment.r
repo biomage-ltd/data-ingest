@@ -204,7 +204,7 @@ config.cellSizeDistribution <- list(enabled="true",
 
 config.mitochondrialContent <- list(enabled="true", auto="true", 
     filterSettings = list(method="absolute_threshold", methodSettings = list(
-        absolute_threshold=list(maxFraction=10, binStep=0.05)
+        absolute_threshold=list(maxFraction=0.1, binStep=0.05)
         )
     )
 )
