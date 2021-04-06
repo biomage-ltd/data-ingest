@@ -35,7 +35,7 @@ check_config <- function(scdata, sample, config){
     if("metadata" %in% names(config)){
         rest_metadata <- as.data.frame(config$metadata)
         rest_metadata$sample <- ifelse(length(config$samples)>1, config$samples, sample)
-        for(var in rest_metadata){
+        for(var in colnames(rest_metadata)){
             metadata[, var] <- rest_metadata[, var][match(metadata$sample, rest_metadata$sample)]
         }
     }

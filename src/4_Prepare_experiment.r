@@ -137,16 +137,31 @@ if(all(!is.na(meta.data$emptyDrops_FDR))){
 message("saving R object...")
 saveRDS(seurat_obj, file = "/output/experiment.rds", compress = FALSE)
 
-if(length(samples)>1){
+
+
+
+
+message("saving multsiample info...")
+write.table(
+    data.frame(Cells_ID=seurat_obj$cells_id, Value=seurat_obj$samples),
+    file = "/output/samples-cells.csv",
+    quote = F, col.names = F, row.names = F,
+    sep = "\t"
+)
+
+
+if("metadata" %in% names(config)){
+    variables_metadata <- names(config$metadata)
+    metadata_dynamo <- seurat_obj@meta.data[, c("cells_id", variables_metadata)]
+
     message("saving multsiample info...")
     write.table(
-        data.frame(Cells_ID = seurat_obj$cells_id[names(seurat_obj@active.ident)], type=seurat_obj$samples),
-        file = "/output/multisample-cells.csv",
+        metadata_dynamo,
+        file = "/output/metadata-cells.csv",
         quote = F, col.names = F, row.names = F,
         sep = "\t"
     )
 }
-
 
 write.table(
     colnames(seurat_obj),
