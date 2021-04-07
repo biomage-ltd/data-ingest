@@ -222,7 +222,6 @@ def main():
             "organism": config["organism"],
             "type": config["input"]["type"],
         },
-        "matrixPath": FILE_NAME,
         "cellSets": cellSets,
         "processingConfig": config_dataProcessing, 
     }
