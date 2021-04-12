@@ -226,7 +226,8 @@ config.doubletScores <- list(enabled="true", auto="true",
 )
 
 # BE CAREFUL! The method is based on config.json. For multisample only seuratv4, for unisample LogNormalize
-identified.method <- ifelse(length(samples)==1, "unisample", "seuratv4")
+# hardcoded because unisample check is performed in dataIntegration 
+identified.method <- 'seuratv4'
 config.dataIntegration <- list(auto="true", 
     dataIntegration = list( method = identified.method , 
                         methodSettings = list(seuratv4=list(numGenes=2000, normalisation="logNormalize"), 
