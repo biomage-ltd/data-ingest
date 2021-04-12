@@ -87,29 +87,41 @@ run_dataIntegration <- function(scdata, config){
     
     # Currently, we only support Seurat V4 pipeline for the multisample integration
     if(nsamples > 1 && method=="seuratv4"){
-        data.split <- SplitObject(scdata, split.by = "type")
+        #FIX FOR CURRENT DATASET!!!!!!
+        Seurat::DefaultAssay(scdata) <- "RNA"
+        data.split <- Seurat::SplitObject(scdata, split.by = "samples")
         for (i in 1:length(data.split)) {
-            data.split[[i]] <- NormalizeData(data.split[[i]], normalization.method = normalisation, verbose = F)
-            data.split[[i]] <- FindVariableFeatures(data.split[[i]], selection.method = "vst", nfeatures = nfeatures, verbose = FALSE)
+            data.split[[i]] <- Seurat::NormalizeData(data.split[[i]], normalization.method = normalization, verbose = F)
+            data.split[[i]] <- Seurat::FindVariableFeatures(data.split[[i]], selection.method = "vst", nfeatures = nfeatures, verbose = FALSE)
         }
-        data.anchors <- FindIntegrationAnchors(object.list = data.split, dims = 1:numPCs, verbose = FALSE)
-        scdata <- IntegrateData(anchorset = data.anchors, dims = 1:numPCs)
-        DefaultAssay(scdata) <- "integrated"
+        data.anchors <- Seurat::FindIntegrationAnchors(object.list = data.split, dims = 1:numPCs, verbose = FALSE)
+
+        # @misc slots not preserved so transfer
+        misc <- scdata@misc
+        scdata <- Seurat::IntegrateData(anchorset = data.anchors, dims = 1:numPCs)
+        scdata@misc <- misc
+        Seurat::DefaultAssay(scdata) <- "integrated"
     }else{
         print('Only one sample detected.')
         # Else, we are in unisample experiment and we only need to normalize 
-        scdata <- Seurat::NormalizeData(scdata, normalization.method = normalisation, verbose = F)
-        scdata <-Seurat::FindVariableFeatures(scdata, selection.method = "vst", nfeatures = nfeatures, verbose = F)
+        scdata <- Seurat::NormalizeData(scdata, normalization.method = normalization, verbose = F)
     }
+
+    scdata <- FindVariableFeatures(scdata, selection.method = "vst", assay = "RNA", nfeatures = nfeatures, verbose = FALSE)
+    vars <- HVFInfo(object = scdata, assay = "RNA", selection.method = 'vst') # to create vars
+    annotations <- scdata@misc[["gene_annotations"]]
+    vars$SYMBOL <- annotations$name[match(rownames(vars), annotations$input)]
+    vars$ENSEMBL <- rownames(vars)
+    scdata@misc[["gene_dispersion"]] <- vars
 
     # Scale in order to compute PCA
     scdata <- Seurat::ScaleData(scdata, verbose = F)
 
     # HARDCODE numPCs to 50
-    scdata <- Seurat::RunPCA(scdata, npcs = 50, features = VariableFeatures(object=scdata), verbose=FALSE)
+    scdata <- Seurat::RunPCA(scdata, npcs = 50, features = Seurat::VariableFeatures(object=scdata), verbose=FALSE)
 
     # Compute embedding with default setting to get an overview of the performance of the bath correction
-    scdata <- RunUMAP(scdata, reduction='pca', dims = 1:numPCs, verbose = F, umap.method = "uwot-learn", min.dist = umap_min_distance, metric = umap_distance_metric)
+    scdata <- Seurat::RunUMAP(scdata, reduction='pca', dims = 1:numPCs, verbose = F, umap.method = "uwot-learn", min.dist = umap_min_distance, metric = umap_distance_metric)
 
     return(scdata)
 }
