@@ -46,6 +46,12 @@ check_10x_input <- function(samples){
     }
   }
 
+  if(check_v2)
+    message("Version of Cell Ranger: V2")
+
+  if(check_v3)
+    message("Version of Cell Ranger: V3")
+
   return(TRUE)
 
 }
