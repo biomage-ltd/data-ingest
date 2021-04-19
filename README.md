@@ -43,3 +43,5 @@ Chicken is `ggallus`,  Zebrafish is `drerio`, etc.
 `input` should not be modified for 10x data sets.
 
 5. Run: `docker-compose up --build`.
+
+By default this command will deploy to staging, to deploy to production run: `ENVIRONMENT=production docker-compose up --build`

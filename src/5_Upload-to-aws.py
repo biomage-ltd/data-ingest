@@ -20,6 +20,9 @@ import uuid
 
 COLOR_POOL = []
 
+# Environment to deploy to, by default staging
+ENVIRONMENT = os.getenv("ENVIRONMENT", "staging")
+
 with open("/data-ingest/src/color_pool.json") as f:
     COLOR_POOL = json.load(f)
 
@@ -212,7 +215,7 @@ def main():
 
     print("Experiment name is", config["name"])
 
-    FILE_NAME = f"biomage-source-production/{experiment_id}/r.rds"
+    FILE_NAME = f"biomage-source-{ENVIRONMENT}/{experiment_id}/r.rds"
 
     experiment_data = {
         "apiVersion": "2.0.0-data-ingest-seurat-rds-automated",
@@ -222,9 +225,10 @@ def main():
             "organism": config["organism"],
             "type": config["input"]["type"],
         },
-        "cellSets": cellSets,
         "processingConfig": config_dataProcessing, 
     }
+
+    cell_sets_data = {"cellSets": cellSets}
     
     # Conver to float all decimals
     experiment_data = json.loads(json.dumps(experiment_data), parse_float=Decimal)
@@ -240,9 +244,8 @@ def main():
         aws_access_key_id=access_key,
         aws_secret_access_key=secret_access_key,
         region_name="eu-west-1",
-    ).Table("experiments-production")
+    ).Table(f"experiments-{ENVIRONMENT}")
     dynamo.put_item(Item=experiment_data)
-    
 
     print("uploading to dynamodb samples table...")
     dynamo = boto3.resource(
@@ -250,9 +253,17 @@ def main():
         aws_access_key_id=access_key,
         aws_secret_access_key=secret_access_key,
         region_name="eu-west-1",
-    ).Table("samples-production")
+    ).Table(f"samples-{ENVIRONMENT}")
     dynamo.put_item(Item=samples_data)
 
+    print("uploading cellsets table to s3 ...")
+    s3 = boto3.client(
+        "s3",
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_access_key,
+        region_name="eu-west-1",
+    )
+    s3.put_object(Body=cell_sets_data, Bucket=experiment_id, Key=f"cell-sets-{ENVIRONMENT}")
 
     print("uploading R object to s3...")
     s3 = boto3.client(
