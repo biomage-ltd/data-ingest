@@ -58,6 +58,13 @@ organism <- config$organism
 #annotations <- gprofiler2::gconvert(
 #query = rownames(seurat_obj), organism = organism, target="ENSG", mthreshold = Inf, filter_na = FALSE)
 annotations <- read.delim("/output/features_annotations.tsv")
+
+# In order to avoid duplicated genes names, we are going to add the ENSEMBL ID for those 
+# genes that are duplicated (geneNameDuplicated-ENSEMBL)
+duplicated_gene_name <- unique(annotations$name[duplicated(annotations$name)])
+idt_duplicated <- annotations$name %in% duplicated_gene_name
+annotations$name[idt_duplicated] <- paste(annotations$name[idt_duplicated], annotations$input[idt_duplicated], sep = "-")
+
 seurat_obj@misc[["gene_annotations"]] <- annotations
 
 message("Storing cells id...")
