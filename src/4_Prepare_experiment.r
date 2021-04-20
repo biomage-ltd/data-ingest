@@ -57,7 +57,7 @@ message("Storing gene annotations...")
 organism <- config$organism
 #annotations <- gprofiler2::gconvert(
 #query = rownames(seurat_obj), organism = organism, target="ENSG", mthreshold = Inf, filter_na = FALSE)
-annotations <- read.delim("output/features_annotations.tsv")
+annotations <- read.delim("/output/features_annotations.tsv")
 seurat_obj@misc[["gene_annotations"]] <- annotations
 
 message("Storing cells id...")
