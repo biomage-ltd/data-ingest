@@ -92,14 +92,25 @@ create_dataframe <- function(config){
       "There should be the files {genes.tsv, matrix.mtx, barcodes.tsv} or {features.tsv.gz, barcodes.tsv.gz and matrix.mtx.gz}")
     }
 
+    annotation_features <- list()
+
     for(sample in samples){
-      scdata[[sample]] <- Read10X(paste("/input", sample, sep = "/"))  
+      scdata[[sample]] <- Read10X(paste("/input", sample, sep = "/"), gene.column = 1)  
+      if(file.exists(paste("/input", sample, "genes.tsv", sep = "/"))) 
+        annotation_features[[sample]] <- read.delim(paste("/input", sample, "genes.tsv", sep = "/"), header = FALSE)
+      if(file.exists(paste("/input", sample, "features.tsv.gz", sep = "/"))) 
+        annotation_features[[sample]] <- read.delim(paste("/input", sample, "features.tsv.gz", sep = "/"), header = FALSE)
       message(
         paste(
           "Found", nrow(scdata[[sample]]), "genes and", ncol(scdata[[sample]]), "cells in sample", sample, "."
         )
       )
     }
+    saveRDS(annotation_features, "/output/annotation_features.RDS")
+    annotation_features <- unique(do.call('rbind', annotation_features))
+    annotation_features <- annotation_features[, c(1, 2)]
+    colnames(annotation_features) <- c("input", "name")
+    write.table(annotation_features, "/output/features_annotations.tsv", sep = "\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
   }
   
   # So far, we haven't tested input format in table type. 

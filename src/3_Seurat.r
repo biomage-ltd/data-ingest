@@ -61,10 +61,12 @@ adding_metrics_and_annotation <- function(scdata, sample, config, min.cells = 3,
     message("[", sample, "] \t finding genome annotations for genes...")
     organism <- config$organism
 
-    annotations <- gprofiler2::gconvert(
-    query = rownames(seurat_obj), organism = organism, target="ENSG", mthreshold = Inf, filter_na = FALSE)
+    #annotations <- gprofiler2::gconvert(
+    #query = rownames(seurat_obj), organism = organism, target="ENSG", mthreshold = Inf, filter_na = FALSE)
 
-    if(organism%in%c("hsapiens", "mmusculus")){
+    annotations <- read.delim("/output/features_annotations.tsv")
+
+    if(any(grepl("^mt-", annotations$name, ignore.case = T))){
         message("[", sample, "] \t Adding MT information...")
         mt.features <-  annotations$input[grep("^mt-", annotations$name, ignore.case = T)]
         seurat_obj <- PercentageFeatureSet(seurat_obj, features=mt.features , col.name = "percent.mt")
