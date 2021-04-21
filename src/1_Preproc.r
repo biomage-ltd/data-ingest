@@ -98,7 +98,7 @@ create_dataframe <- function(config){
     # this is an excerpt of features.tsv.gz
     # ENSG00000237613 | FAM138A | Gene Expression
     # ENSG00000186092 | OR4F5 | Gene Expression
-    # More information about enes.tsv features.tsv.gz: https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/output/matrices
+    # More information about genes.tsv features.tsv.gz: https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/output/matrices
 
     for(sample in samples){
       sample_dir <- file.path('/input', sample)
