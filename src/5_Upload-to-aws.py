@@ -271,9 +271,9 @@ def main():
     if CLUSTER_ENV == "production":
         print("successful. experiment is now accessible at:")
         print(f"https://scp.biomage.net/experiments/{experiment_id}/data-exploration")
-        
+
     elif CLUSTER_ENV == "staging":
-        print("successful. experiment uploaded to staging.")
+        print(f"successful. Experiment ID: {experiment_id} uploaded to staging.")
 
 
 
