@@ -69,6 +69,7 @@ annotations$name[is.dup] <- paste(gname[is.dup], annotations$input[is.dup], sep 
 
 # Ensure index by rownames in seurat_obj
 annotations <- annotations[match(rownames(seurat_obj), annotations$input), ]
+rownames(annotations) <- annotations$input
 
 seurat_obj@misc[["gene_annotations"]] <- annotations
 
