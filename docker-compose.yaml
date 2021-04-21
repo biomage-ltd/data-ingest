@@ -5,6 +5,8 @@ services:
     build:
       target: prod
       context: .
+      args:
+        - CLUSTER_ENV=${CLUSTER_ENV-staging}
     volumes:
       - ./src:/data-ingest/src:cached
       - ./input:/input:cached
