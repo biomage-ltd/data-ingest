@@ -106,7 +106,6 @@ create_dataframe <- function(config){
         )
       )
     }
-    saveRDS(annotation_features, "/output/annotation_features.RDS")
     annotation_features <- unique(do.call('rbind', annotation_features))
     annotation_features <- annotation_features[, c(1, 2)]
     colnames(annotation_features) <- c("input", "name")
