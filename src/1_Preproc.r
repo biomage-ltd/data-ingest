@@ -93,11 +93,12 @@ create_dataframe <- function(config){
     }
 
     annotation_features <- list()
-# overall feature annotation is derived from input data saved in genes.tsv features.tsv.gz
-# since each sample only carries a subset of annotation for it's expressed genes, the annotation for all samples is merged.
-# this is an excerpt of features.tsv.gz
-# ENSG00000237613 | FAM138A | Gene Expression
-# ENSG00000186092 | OR4F5 | Gene Expression
+    # overall feature annotation is derived from input data saved in genes.tsv features.tsv.gz
+    # since each sample only carries a subset of annotation for it's expressed genes, the annotation for all samples is merged.
+    # this is an excerpt of features.tsv.gz
+    # ENSG00000237613 | FAM138A | Gene Expression
+    # ENSG00000186092 | OR4F5 | Gene Expression
+    # More information about enes.tsv features.tsv.gz: https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/output/matrices
 
     for(sample in samples){
       sample_dir <- file.path('/input', sample)
@@ -111,10 +112,10 @@ create_dataframe <- function(config){
         )
       )
     }
-    annotation_features <- unique(do.call('rbind', annotation_features))
-    annotation_features <- annotation_features[, c(1, 2)]
-    colnames(annotation_features) <- c("input", "name")
-    write.table(annotation_features, "/output/features_annotations.tsv", sep = "\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
+    annotation_features_df <- unique(do.call('rbind', annotation_features))
+    annotation_features_df <- annotation_features_df[, c(1, 2)]
+    colnames(annotation_features_df) <- c("input", "name")
+    write.table(annotation_features_df, "/output/features_annotations.tsv", sep = "\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
   }
   
   # So far, we haven't tested input format in table type. 
