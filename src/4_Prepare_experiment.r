@@ -62,8 +62,13 @@ annotations <- read.delim("/output/features_annotations.tsv")
 # In order to avoid duplicated genes names, we are going to add the ENSEMBL ID for those 
 # genes that are duplicated (geneNameDuplicated-ENSEMBL)
 gname <- annotations$name
+# Keep original name in 'original_name' variable
+annotations$original_name <- gname
 is.dup <- duplicated(gname) | duplicated(gname, fromLast=TRUE)
 annotations$name[is.dup] <- paste(gname[is.dup], annotations$input[is.dup], sep = " - ")
+
+# Ensure index by rownames in seurat_obj
+annotations <- annotations[match(rownames(seurat_obj), annotations$input), ]
 
 seurat_obj@misc[["gene_annotations"]] <- annotations
 
