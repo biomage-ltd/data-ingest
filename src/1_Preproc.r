@@ -95,11 +95,11 @@ create_dataframe <- function(config){
     annotation_features <- list()
 
     for(sample in samples){
-      scdata[[sample]] <- Read10X(paste("/input", sample, sep = "/"), gene.column = 1)  
-      if(file.exists(paste("/input", sample, "genes.tsv", sep = "/"))) 
-        annotation_features[[sample]] <- read.delim(paste("/input", sample, "genes.tsv", sep = "/"), header = FALSE)
-      if(file.exists(paste("/input", sample, "features.tsv.gz", sep = "/"))) 
-        annotation_features[[sample]] <- read.delim(paste("/input", sample, "features.tsv.gz", sep = "/"), header = FALSE)
+      sample_dir <- file.path('/input', sample)
+      scdata[[sample]] <- Read10X(sample_dir, gene.column = 1)  
+      fpaths <- file.path(sample_dir, c('genes.tsv', 'features.tsv.gz'))
+      fpath <- fpaths[file.exists(fpaths)][1]
+      if (!is.na(fpath)) annotation_features[[sample]] <- read.delim(fpath, header = FALSE)
       message(
         paste(
           "Found", nrow(scdata[[sample]]), "genes and", ncol(scdata[[sample]]), "cells in sample", sample, "."
