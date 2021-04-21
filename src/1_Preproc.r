@@ -93,6 +93,11 @@ create_dataframe <- function(config){
     }
 
     annotation_features <- list()
+# overall feature annotation is derived from input data saved in genes.tsv features.tsv.gz
+# since each sample only carries a subset of annotation for it's expressed genes, the annotation for all samples is merged.
+# this is an excerpt of features.tsv.gz
+# ENSG00000237613 | FAM138A | Gene Expression
+# ENSG00000186092 | OR4F5 | Gene Expression
 
     for(sample in samples){
       sample_dir <- file.path('/input', sample)
