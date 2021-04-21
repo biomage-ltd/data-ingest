@@ -61,9 +61,9 @@ annotations <- read.delim("/output/features_annotations.tsv")
 
 # In order to avoid duplicated genes names, we are going to add the ENSEMBL ID for those 
 # genes that are duplicated (geneNameDuplicated-ENSEMBL)
-duplicated_gene_name <- unique(annotations$name[duplicated(annotations$name)])
-idt_duplicated <- annotations$name %in% duplicated_gene_name
-annotations$name[idt_duplicated] <- paste(annotations$name[idt_duplicated], annotations$input[idt_duplicated], sep = "-")
+gname <- annotations$name
+is.dup <- duplicated(gname) | duplicated(gname, fromLast=TRUE)
+annotations$name[is.dup] <- paste(gname[is.dup], annotations$input[is.dup], sep = " - ")
 
 seurat_obj@misc[["gene_annotations"]] <- annotations
 
@@ -342,5 +342,4 @@ message("config file...")
 write(exportJson, "/output/config_dataProcessing.json")
 
 message("Step 4 completed.")
-
 
