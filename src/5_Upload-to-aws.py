@@ -25,7 +25,12 @@ ENVIRONMENT = os.getenv("ENVIRONMENT", "staging")
 
 WARN_TXT_COL = "\033[93m"
 RESET_TXT_COL = '\033[0m'
+ERR_TXT_COL = '\033[91m'
 print(f"{WARN_TXT_COL}Deploying to {ENVIRONMENT}{RESET_TXT_COL}")
+
+if (not (ENVIRONMENT in ["staging", "production"])):
+    print(f"{ERR_TXT_COL}{ENVIRONMENT} does not exists{RESET_TXT_COL}")
+    exit(1)
 
 with open("/data-ingest/src/color_pool.json") as f:
     COLOR_POOL = json.load(f)
