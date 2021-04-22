@@ -23,6 +23,10 @@ COLOR_POOL = []
 # Environment to deploy to, by default staging
 ENVIRONMENT = os.getenv("ENVIRONMENT", "staging")
 
+WARN_TXT_COL = "\033[93m"
+RESET_TXT_COL = '\033[0m'
+print(f"{WARN_TXT_COL}Deploying to {ENVIRONMENT}{RESET_TXT_COL}")
+
 with open("/data-ingest/src/color_pool.json") as f:
     COLOR_POOL = json.load(f)
 
@@ -96,9 +100,7 @@ def create_samples_table(config, experiment_id):
             "preFiltered" : preFiltered
         }
 
-
     return {"experimentId": experiment_id, "samples" : samples_table}
-
 
 # cell_sets fn for seurat samples name
 def samples_sets():
@@ -110,7 +112,6 @@ def samples_sets():
         names=["Cells_ID", "Value"],
         na_values=["None"],
     )
-    
 
     cell_set = {
         "key": "sample",
@@ -228,7 +229,7 @@ def main():
         "processingConfig": config_dataProcessing, 
     }
 
-    cell_sets_data = {"cellSets": cellSets}
+    cell_sets_data = json.dumps(cellSets)
     
     # Conver to float all decimals
     experiment_data = json.loads(json.dumps(experiment_data), parse_float=Decimal)
@@ -237,48 +238,54 @@ def main():
     access_key = os.getenv("AWS_ACCESS_KEY_ID")
     secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
+    experiments_key = f"experiments-{ENVIRONMENT}"
+    samples_key = f"samples-{ENVIRONMENT}"
+    cell_sets_bucket = f"cell-sets-{ENVIRONMENT}"
+    r_object_bucket, r_object_key = FILE_NAME.split("/", 1)
 
-    print("uploading to dynamodb experiments table...")
+    print(f"uploading to dynamodb experiments table {experiments_key}...")
     dynamo = boto3.resource(
         "dynamodb",
         aws_access_key_id=access_key,
         aws_secret_access_key=secret_access_key,
         region_name="eu-west-1",
-    ).Table(f"experiments-{ENVIRONMENT}")
+    ).Table(experiments_key)
     dynamo.put_item(Item=experiment_data)
 
-    print("uploading to dynamodb samples table...")
+    print(f"uploading to dynamodb samples table {samples_key}...")
     dynamo = boto3.resource(
         "dynamodb",
         aws_access_key_id=access_key,
         aws_secret_access_key=secret_access_key,
         region_name="eu-west-1",
-    ).Table(f"samples-{ENVIRONMENT}")
+    ).Table(samples_key)
     dynamo.put_item(Item=samples_data)
 
-    print("uploading cellsets table to s3 ...")
+    print(f"uploading cellsets table to s3 bucket {cell_sets_bucket}...")
     s3 = boto3.client(
         "s3",
         aws_access_key_id=access_key,
         aws_secret_access_key=secret_access_key,
         region_name="eu-west-1",
     )
-    s3.put_object(Body=cell_sets_data, Bucket=experiment_id, Key=f"cell-sets-{ENVIRONMENT}")
 
-    print("uploading R object to s3...")
+    s3.put_object(Body=cell_sets_data, Bucket=cell_sets_bucket, Key=experiment_id)
+
+    print(f"uploading R object to s3 bucket {r_object_bucket}...")
     s3 = boto3.client(
         "s3",
         aws_access_key_id=access_key,
         aws_secret_access_key=secret_access_key,
         region_name="eu-west-1",
     )
-    bucket, key = FILE_NAME.split("/", 1)
     
     with open("/output/experiment.rds", "rb") as f:
-        s3.put_object(Body=f, Bucket=bucket, Key=key)
+        s3.put_object(Body=f, Bucket=r_object_bucket, Key=r_object_key)
     
     print("successful. experiment is now accessible at:")
-    print(f"https://scp.biomage.net/experiments/{experiment_id}/data-exploration")
+
+    url_to_env = ENVIRONMENT == "https://scp.biomage.net" if "production" else "staging_deployment_url"
+    print(f"{url_to_env}/experiments/{experiment_id}/data-exploration")
 
 
 
