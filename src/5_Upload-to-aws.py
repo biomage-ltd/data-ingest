@@ -19,6 +19,7 @@ from datetime import datetime
 import uuid
 
 COLOR_POOL = []
+CLUSTER_ENV = os.getenv('CLUSTER_ENV')
 
 with open("/data-ingest/src/color_pool.json") as f:
     COLOR_POOL = json.load(f)
@@ -212,7 +213,7 @@ def main():
 
     print("Experiment name is", config["name"])
 
-    FILE_NAME = f"biomage-source-production/{experiment_id}/r.rds"
+    FILE_NAME = f"biomage-source-{CLUSTER_ENV}/{experiment_id}/r.rds"
 
     experiment_data = {
         "apiVersion": "2.0.0-data-ingest-seurat-rds-automated",
@@ -240,7 +241,7 @@ def main():
         aws_access_key_id=access_key,
         aws_secret_access_key=secret_access_key,
         region_name="eu-west-1",
-    ).Table("experiments-production")
+    ).Table(f"experiments-{CLUSTER_ENV}")
     dynamo.put_item(Item=experiment_data)
     
 
@@ -250,7 +251,7 @@ def main():
         aws_access_key_id=access_key,
         aws_secret_access_key=secret_access_key,
         region_name="eu-west-1",
-    ).Table("samples-production")
+    ).Table(f"samples-{CLUSTER_ENV}")
     dynamo.put_item(Item=samples_data)
 
 
@@ -266,8 +267,14 @@ def main():
     with open("/output/experiment.rds", "rb") as f:
         s3.put_object(Body=f, Bucket=bucket, Key=key)
     
-    print("successful. experiment is now accessible at:")
-    print(f"https://scp.biomage.net/experiments/{experiment_id}/data-exploration")
+
+    if CLUSTER_ENV == "production":
+        print("successful. experiment is now accessible at:")
+        print(f"https://scp.biomage.net/experiments/{experiment_id}/data-exploration")
+
+    elif CLUSTER_ENV == "staging":
+        print(f"successful. Experiment ID: {experiment_id} uploaded to staging.")
+
 
 
 
