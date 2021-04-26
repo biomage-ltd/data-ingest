@@ -50,4 +50,3 @@ This process should have given you an Experiment-ID (EID) as an output and also 
 1. The experiment configuration in `json` format into **DynamoDB** table `experiments-{CLUSTER_ENV}` with the EID as `experimentId` partion key
 2. The sample configuration in `json` format into **DynamoDB** table `samples-{CLUSTER_ENV}` with the EID as `experimentId` partion key
 3. An `r.rds` object into **S3** this bucket:  `biomage-source-{CLUSTER_ENV}/{experiment_id}/r.rds`
-
