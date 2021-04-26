@@ -251,7 +251,9 @@ def main():
         "processingConfig": config_dataProcessing,
     }
 
-    cell_sets_data = json.dumps({cellSets: cellSets})
+    cellSetsObject = {"cellSets": cellSets}
+
+    cell_sets_data = json.dumps(cellSetsObject)
 
     # Conver to float all decimals
     experiment_data = json.loads(json.dumps(experiment_data), parse_float=Decimal)
@@ -260,12 +262,8 @@ def main():
     access_key = os.getenv("AWS_ACCESS_KEY_ID")
     secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
-    experiments_key = f"experiments-{ENVIRONMENT}"
-    samples_key = f"samples-{ENVIRONMENT}"
-    cell_sets_bucket = f"cell-sets-{ENVIRONMENT}"
     r_object_bucket, r_object_key = FILE_NAME.split("/", 1)
 
-    print(f"uploading to dynamodb experiments table {experiments_key}...")
     dynamo = boto3.resource(
         "dynamodb",
         aws_access_key_id=access_key,
@@ -274,7 +272,6 @@ def main():
     ).Table(f"experiments-{CLUSTER_ENV}")
     dynamo.put_item(Item=experiment_data)
 
-    print(f"uploading to dynamodb samples table {samples_key}...")
     dynamo = boto3.resource(
         "dynamodb",
         aws_access_key_id=access_key,
@@ -283,7 +280,6 @@ def main():
     ).Table(f"samples-{CLUSTER_ENV}")
     dynamo.put_item(Item=samples_data)
 
-    print(f"uploading cellsets table to s3 bucket {cell_sets_bucket}...")
     s3 = boto3.client(
         "s3",
         aws_access_key_id=access_key,
@@ -291,9 +287,10 @@ def main():
         region_name="eu-west-1",
     )
 
-    s3.put_object(Body=cell_sets_data, Bucket=cell_sets_bucket, Key=experiment_id)
+    s3.put_object(
+        Body=cell_sets_data, Bucket=f"cell-sets-{CLUSTER_ENV}", Key=experiment_id
+    )
 
-    print(f"uploading R object to s3 bucket {r_object_bucket}...")
     s3 = boto3.client(
         "s3",
         aws_access_key_id=access_key,
