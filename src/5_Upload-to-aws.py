@@ -19,17 +19,15 @@ from datetime import datetime
 import uuid
 
 COLOR_POOL = []
-
-# Environment to deploy to, by default staging
-ENVIRONMENT = os.getenv("ENVIRONMENT", "staging")
+CLUSTER_ENV = os.getenv("CLUSTER_ENV")
 
 WARN_TXT_COL = "\033[93m"
-RESET_TXT_COL = '\033[0m'
-ERR_TXT_COL = '\033[91m'
-print(f"{WARN_TXT_COL}Deploying to {ENVIRONMENT}{RESET_TXT_COL}")
+RESET_TXT_COL = "\033[0m"
+ERR_TXT_COL = "\033[91m"
+print(f"{WARN_TXT_COL}Deploying to {CLUSTER_ENV}{RESET_TXT_COL}")
 
-if (not (ENVIRONMENT in ["staging", "production"])):
-    print(f"{ERR_TXT_COL}{ENVIRONMENT} does not exists{RESET_TXT_COL}")
+if not (CLUSTER_ENV in ["staging", "production"]):
+    print(f"{ERR_TXT_COL}{CLUSTER_ENV} does not exists{RESET_TXT_COL}")
     exit(1)
 
 with open("/data-ingest/src/color_pool.json") as f:
@@ -43,7 +41,8 @@ def calculate_checksum(filenames):
             hash.update(open(fn, "rb").read())
     return hash.hexdigest()
 
-# This function crate the table information for samples. As input it requires the experiment id and the config.  
+
+# This function crate the table information for samples. As input it requires the experiment id and the config.
 def create_samples_table(config, experiment_id):
     # In samples_table we are going to add the core of the information
     samples_table = {}
@@ -57,55 +56,73 @@ def create_samples_table(config, experiment_id):
 
     # Firstly, we identify the samples name. To do that we fetch the names of the folders (we suppose that the name
     # of the folders corresponds with the samples name) or direclty get them from the config
-    if len(config["samples"])>1:
+    if len(config["samples"]) > 1:
         samples = config["samples"]
     else:
-        samples = [ name for name in os.listdir("/input") if os.path.isdir(os.path.join("/input", name)) ]
-    
-    samples_table["ids"] = [ "sample-"+sample for sample in samples]
+        samples = [
+            name
+            for name in os.listdir("/input")
+            if os.path.isdir(os.path.join("/input", name))
+        ]
 
-    # For the current datasets it could happen that they are not in the gz format, so we leave the alternative tsv format. 
-    mime_options = {"tsv": "application/tsv", "gz" : "application/gzip", "mtx" :  "application/mtx"}
+    samples_table["ids"] = ["sample-" + sample for sample in samples]
+
+    # For the current datasets it could happen that they are not in the gz format, so we leave the alternative tsv format.
+    mime_options = {
+        "tsv": "application/tsv",
+        "gz": "application/gzip",
+        "mtx": "application/mtx",
+    }
 
     for sample in samples:
-        
+
         # flag filtered
-        preFiltered = df_prefilered.loc[df_prefilered.samples==sample, "flag_filtered"].tolist()[0]=="Filtered"
+        preFiltered = (
+            df_prefilered.loc[
+                df_prefilered.samples == sample, "flag_filtered"
+            ].tolist()[0]
+            == "Filtered"
+        )
 
         # Identify datetime
         createdDate = datetime.now()
         lastModified = datetime.now()
         fileNames = {}
         # Look for the file that are not hidden (the hidden files start with .hidden.tsv)
-        sample_files = [sample+"/"+f for f in os.listdir("/input/"+sample) if not f.startswith('.')]
+        sample_files = [
+            sample + "/" + f
+            for f in os.listdir("/input/" + sample)
+            if not f.startswith(".")
+        ]
 
         # Iterate over each file to create the slot
         for sample_file in sample_files:
             fileNames[sample_file] = {
-                "objectKey" : '', 
-                "name" : sample_file, 
-                "size" : os.stat("/input/"+sample_file).st_size, 
+                "objectKey": "",
+                "name": sample_file,
+                "size": os.stat("/input/" + sample_file).st_size,
                 "mime": mime_options[sample_file.split(".")[-1]],
-                "success": True, 
-                "error": False
+                "success": True,
+                "error": False,
             }
 
         # Add the whole information to each sample
-        samples_table["sample-"+sample] = {
-            "name" : sample, 
-            "uuid" : str(uuid.uuid4()), 
+        samples_table["sample-" + sample] = {
+            "name": sample,
+            "uuid": str(uuid.uuid4()),
             "species": config["organism"],
             "type": config["input"]["type"],
             "createdDate": createdDate.isoformat(),
             "lastModified": lastModified.isoformat(),
-            "complete": True, 
+            "complete": True,
             "error": False,
-            "fileNames" : sample_files, 
-            "files" : fileNames,
-            "preFiltered" : preFiltered
+            "fileNames": sample_files,
+            "files": fileNames,
+            "preFiltered": preFiltered,
         }
 
-    return {"experimentId": experiment_id, "samples" : samples_table}
+    return {"experimentId": experiment_id, "samples": samples_table}
+
 
 # cell_sets fn for seurat samples name
 def samples_sets():
@@ -147,7 +164,7 @@ def meta_sets():
         sep="\t",
         header=0,
     )
-    
+
     cell_set_list = list()
 
     # The first column is the cells_id, the rest is the metadata information
@@ -169,7 +186,7 @@ def meta_sets():
             view = meta_annotations[meta_annotations.iloc[:, i] == value]["cells_id"]
             cell_set["children"].append(
                 {
-                    "key":   key+f"-{value}",
+                    "key": key + f"-{value}",
                     "name": f"{value}",
                     "color": COLOR_POOL.pop(0),
                     "cellIds": [int(d) for d in view.tolist()],
@@ -178,6 +195,7 @@ def meta_sets():
 
         cell_set_list.append(cell_set)
     return cell_set_list
+
 
 def main():
     experiment_id = calculate_checksum(
@@ -197,15 +215,14 @@ def main():
     with open("/output/config_dataProcessing.json", "r") as f:
         config_dataProcessing = json.load(f)
 
-
     # Design cell_set scratchpad for DynamoDB
     scratchpad = {
-                "key": "scratchpad",
-                "name": "Scratchpad",
-                "rootNode": True,
-                "children": [],
-                "type": "cellSets",
-            }
+        "key": "scratchpad",
+        "name": "Scratchpad",
+        "rootNode": True,
+        "children": [],
+        "type": "cellSets",
+    }
 
     samples_data = create_samples_table(config, experiment_id)
     samples_set = samples_sets()
@@ -221,7 +238,7 @@ def main():
 
     print("Experiment name is", config["name"])
 
-    FILE_NAME = f"biomage-source-{ENVIRONMENT}/{experiment_id}/r.rds"
+    FILE_NAME = f"biomage-source-{CLUSTER_ENV}/{experiment_id}/r.rds"
 
     experiment_data = {
         "apiVersion": "2.0.0-data-ingest-seurat-rds-automated",
@@ -231,15 +248,15 @@ def main():
             "organism": config["organism"],
             "type": config["input"]["type"],
         },
-        "processingConfig": config_dataProcessing, 
+        "processingConfig": config_dataProcessing,
     }
 
-    cell_sets_data = json.dumps(cellSets)
-    
+    cell_sets_data = json.dumps({cellSets: cellSets})
+
     # Conver to float all decimals
     experiment_data = json.loads(json.dumps(experiment_data), parse_float=Decimal)
     samples_data = json.loads(json.dumps(samples_data), parse_float=Decimal)
-    
+
     access_key = os.getenv("AWS_ACCESS_KEY_ID")
     secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
@@ -254,7 +271,7 @@ def main():
         aws_access_key_id=access_key,
         aws_secret_access_key=secret_access_key,
         region_name="eu-west-1",
-    ).Table(experiments_key)
+    ).Table(f"experiments-{CLUSTER_ENV}")
     dynamo.put_item(Item=experiment_data)
 
     print(f"uploading to dynamodb samples table {samples_key}...")
@@ -263,7 +280,7 @@ def main():
         aws_access_key_id=access_key,
         aws_secret_access_key=secret_access_key,
         region_name="eu-west-1",
-    ).Table(samples_key)
+    ).Table(f"samples-{CLUSTER_ENV}")
     dynamo.put_item(Item=samples_data)
 
     print(f"uploading cellsets table to s3 bucket {cell_sets_bucket}...")
@@ -283,18 +300,18 @@ def main():
         aws_secret_access_key=secret_access_key,
         region_name="eu-west-1",
     )
-    
+
     with open("/output/experiment.rds", "rb") as f:
         s3.put_object(Body=f, Bucket=r_object_bucket, Key=r_object_key)
-    
-    print("successful. experiment is now accessible at:")
 
-    url_to_env = ENVIRONMENT == "https://scp.biomage.net" if "production" else "staging_deployment_url"
-    print(f"{url_to_env}/experiments/{experiment_id}/data-exploration")
+    if CLUSTER_ENV == "production":
+        print("successful. experiment is now accessible at:")
+        print(f"https://scp.biomage.net/experiments/{experiment_id}/data-exploration")
 
+    elif CLUSTER_ENV == "staging":
+        print(f"successful. Experiment ID: {experiment_id} uploaded to staging.")
 
 
 main()
 
 print("Step 5 completed.")
-
