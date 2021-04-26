@@ -69,7 +69,11 @@ adding_metrics_and_annotation <- function(scdata, sample, config, min.cells = 3,
     if(any(grepl("^mt-", annotations$name, ignore.case = T))){
         message("[", sample, "] \t Adding MT information...")
         mt.features <-  annotations$input[grep("^mt-", annotations$name, ignore.case = T)]
-        seurat_obj <- PercentageFeatureSet(seurat_obj, features=mt.features , col.name = "percent.mt")
+        mt.features <- mt.features[mt.features %in% rownames(seurat_obj)]
+        if (length(mt.features)>0)
+            seurat_obj <- PercentageFeatureSet(seurat_obj, features=mt.features , col.name = "percent.mt")
+        else
+            seurat_obj$percent.mt <- 0
     }
 
     message("[", sample, "] \t Getting scrublet results...")

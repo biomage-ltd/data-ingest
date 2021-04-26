@@ -172,7 +172,7 @@ if("metadata" %in% names(config)){
     write.table(
         metadata_dynamo,
         file = "/output/metadata-cells.csv",
-        quote = F, col.names = F, row.names = F,
+        quote = F, col.names = T, row.names = F,
         sep = "\t"
     )
 }
