@@ -52,15 +52,15 @@ scdata_list <- scdata_list[samples]
 #'
 #' @return in the case that the input data was pre-filtered, we return a flag in order to disable the classifier filter. 
 #' This flag is going to be store in the dynamoDB inside the samples-table.
-adding_metrics_and_annotation <- function(scdata, sample, config, min.cells = 3, min.features = 200){
+adding_metrics_and_annotation <- function(scdata, sample, config, min.cells = 3, min.features = 10){
     message("Converting into seurat object sample --> ", sample)
     
     metadata <- check_config(scdata, sample, config)
     seurat_obj <- Seurat::CreateSeuratObject(scdata, assay='RNA', min.cells=min.cells, min.features=min.features, meta.data=metadata, project = config$name)
     
-    message("[", sample, "] \t finding genome annotations for genes...")
     organism <- config$organism
 
+    # message("[", sample, "] \t finding genome annotations for genes...")
     #annotations <- gprofiler2::gconvert(
     #query = rownames(seurat_obj), organism = organism, target="ENSG", mthreshold = Inf, filter_na = FALSE)
 
@@ -76,7 +76,7 @@ adding_metrics_and_annotation <- function(scdata, sample, config, min.cells = 3,
     scores <- get_doublet_score(sample)
     rownames(scores) <- scores$barcodes
 
-    idt <- scores$barcodes[scores$barcodes%in%rownames(seurat_obj@meta.data)]
+    idt <- scores$barcodes[scores$barcodes %in% rownames(seurat_obj@meta.data)]
     seurat_obj@meta.data[idt, "doublet_scores"] <- scores[idt, "doublet_scores"]
 
     message("[", sample, "] \t Adding emptyDrops...")
@@ -111,7 +111,7 @@ adding_metrics_and_annotation <- function(scdata, sample, config, min.cells = 3,
         seurat_obj@tools$flag_filtered <- TRUE
     }
 
-    if (!dir.create("/output/rds_samples")) 
+    if (!dir.exists("/output/rds_samples")) 
         dir.create("/output/rds_samples")
     
     message("[", sample, "] Saving R object...")
