@@ -70,7 +70,7 @@ adding_metrics_and_annotation <- function(scdata, sample, config, min.cells = 3,
         message("[", sample, "] \t Adding MT information...")
         mt.features <-  annotations$input[grep("^mt-", annotations$name, ignore.case = T)]
         mt.features <- mt.features[mt.features %in% rownames(seurat_obj)]
-        if (length(mt.features)>0)
+        if (length(mt.features))
             seurat_obj <- PercentageFeatureSet(seurat_obj, features=mt.features , col.name = "percent.mt")
         else
             seurat_obj$percent.mt <- 0
@@ -133,4 +133,3 @@ df_flag_filtered <- data.frame(samples=samples, flag_filtered=ifelse(flag_filter
 write.table(df_flag_filtered, "/output/df_flag_filtered.txt", col.names = TRUE, row.names = FALSE, sep = "\t", quote = FALSE)
 
 message("Step 3 completed.")
-
