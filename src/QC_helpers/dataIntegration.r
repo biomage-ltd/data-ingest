@@ -25,7 +25,7 @@
 #       }
 #   },
 
-dataIntegration <- function(scdata, config){
+dataIntegration <- function(scdata, config) {
 
     # Check wheter the filter is set to true or false
     if (as.logical(toupper(config$enabled))){

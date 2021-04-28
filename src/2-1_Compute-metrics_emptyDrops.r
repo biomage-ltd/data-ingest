@@ -29,7 +29,7 @@ scdata_list <- scdata_list[samples]
 #' @param sample_name Name of the sample that we are preparing.
 #'
 #' @return 
-compute_emptydrops <- function(scdata, sample_name){
+compute_emptydrops <- function(scdata, sample_name) {
   
   message("Sample --> ", sample_name, "...")
 
@@ -60,6 +60,8 @@ compute_emptydrops <- function(scdata, sample_name){
 }
 
 message("calculating probability of barcodes being background noise...")
-lapply(names(scdata_list), function(sample_name) compute_emptydrops(scdata_list[[sample_name]], sample_name))
+for (sample_name in names(scdata_list)) {
+  compute_emptydrops(scdata_list[[sample_name]], sample_name)
+}
 
 message("Step 2-1 completed.")

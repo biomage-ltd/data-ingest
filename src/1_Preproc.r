@@ -140,6 +140,7 @@ create_dataframe <- function(config){
   return(scdata)
 }
 
+
 # prepare_scrublet_table function 
 #' @description Since scrublet cannot run with the original raw matrix (since there are a large amount of cells with empty reads), we need to prefiltered with a minimun
 #' threshold. For that, we have used the one propose in Seurat tutorial (https://satijalab.org/seurat/archive/v3.2/pbmc3k_tutorial.html), which is related with cell size 
@@ -180,7 +181,9 @@ scdata_list <- create_dataframe(config)
 
 # We store the pre-filtered scdata for scrublets per sample
 message("Exporting pre-filtered scdata for scrublets...")
-sapply(names(scdata_list), function(sample_name) prepare_scrublet_table(scdata_list[[sample_name]], sample_name))
+for (sample_name in names(scdata_list)) {
+  prepare_scrublet_table(scdata_list[[sample_name]], sample_name)
+}
 
 # We store the raw scdata_list since for the emptyDrops since to compute the background we cannot remove any cells. 
 message("Exporting raw scdata for emptyDrops...")
