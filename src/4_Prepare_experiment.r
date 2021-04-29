@@ -14,6 +14,7 @@ suppressWarnings(library(gprofiler2))
 
 set.seed(123)
 options(future.globals.maxSize= 1000 * 1024 ^ 2)
+source("/data-ingest/src/test_object.r")
 source("/data-ingest/src/help.r")
 source("/data-ingest/src/QC_helpers/cellSizeDistribution_config.r")
 source("/data-ingest/src/QC_helpers/numGenesVsNumUmis_config.r")
@@ -145,8 +146,15 @@ if(all(!is.na(meta.data$emptyDrops_FDR))){
 }
 
 ################################################
+## Testing Seurat object before save
+################################################
+
+test_object(seurat_obj)
+
+################################################
 ## Saving files
 ################################################
+
 
 message("saving R object...")
 saveRDS(seurat_obj, file = "/output/experiment.rds", compress = FALSE)

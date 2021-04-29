@@ -25,7 +25,7 @@ RUN R -e 'install.packages("Seurat")'
 RUN R -e 'install.packages("ggplot2")'
 RUN R -e 'install.packages("MASS")'
 RUN R -e 'install.packages("R.utils")'
-
+RUN R -e 'install.packages("testthat")'
 # ----
 
 FROM builder AS prod
