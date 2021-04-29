@@ -10,6 +10,7 @@ import pandas
 import scrublet as scr
 import json
 import os
+import copy
 
 with open("/input/meta.json") as f:
     config = json.load(f)
@@ -31,7 +32,18 @@ for sample in samples:
     print("Running sample " + sample)
     # Computing scrublet
     scrub = scr.Scrublet(df)
-    doublet_scores_sample, _ = scrub.scrub_doublets()
+    # Checking when filtering inside `scrub_doublets` reduces the matrix less than 30 genes or 30 cells
+    # 30 is the hardcode value for PCA analysis in scrublet
+    scrub_check = copy.deepcopy(scrub)
+    # This pipeline belongs to the pipeline inside `scrub_doublets` (https://github.com/swolock/scrublet/blob/master/src/scrublet/scrublet.py)
+    scr.pipeline_normalize(scrub_check)
+    scr.pipeline_get_gene_filter(scrub_check, min_counts=3, min_cells=3, min_gene_variability_pctl=85)
+    scr.pipeline_apply_gene_filter(scrub_check)
+    # The dimension must be strictly less than min(n_samples, n_features), so we substract 1
+    min_dimension = min(scrub_check._E_obs.shape)-1 
+    n_prin_comps = min(30, min_dimension)
+    print("Number of principal components :" + str(n_prin_comps))
+    doublet_scores_sample, _ = scrub.scrub_doublets(n_prin_comps=n_prin_comps)
     # We will store the doublet-scores in the following format
     ####  Barcode   score
     with open("/output/doublet-scores-" + sample + ".csv", "w") as f:

@@ -42,4 +42,11 @@ Chicken is `ggallus`,  Zebrafish is `drerio`, etc.
 
 `input` should not be modified for 10x data sets.
 
-5. Run: `docker-compose up --build`.
+5. Run: `CLUSTER_ENV=production docker-compose up --build` to upload to production. The default will
+upload to staging. 
+
+This process should have given you an Experiment-ID (EID) as an output and also uploaded 3 things:
+
+1. The experiment configuration in `json` format into **DynamoDB** table `experiments-{CLUSTER_ENV}` with the EID as `experimentId` partion key
+2. The sample configuration in `json` format into **DynamoDB** table `samples-{CLUSTER_ENV}` with the EID as `experimentId` partion key
+3. An `r.rds` object into **S3** this bucket:  `biomage-source-{CLUSTER_ENV}/{experiment_id}/r.rds`

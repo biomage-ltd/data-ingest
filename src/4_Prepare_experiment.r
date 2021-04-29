@@ -55,8 +55,22 @@ if (length(seurat_obj_list)==1){
 
 message("Storing gene annotations...")
 organism <- config$organism
-annotations <- gprofiler2::gconvert(
-query = rownames(seurat_obj), organism = organism, target="ENSG", mthreshold = Inf, filter_na = FALSE)
+#annotations <- gprofiler2::gconvert(
+#query = rownames(seurat_obj), organism = organism, target="ENSG", mthreshold = Inf, filter_na = FALSE)
+annotations <- read.delim("/output/features_annotations.tsv")
+
+# In order to avoid duplicated genes names, we are going to add the ENSEMBL ID for those 
+# genes that are duplicated (geneNameDuplicated-ENSEMBL)
+gname <- annotations$name
+# Keep original name in 'original_name' variable
+annotations$original_name <- gname
+is.dup <- duplicated(gname) | duplicated(gname, fromLast=TRUE)
+annotations$name[is.dup] <- paste(gname[is.dup], annotations$input[is.dup], sep = " - ")
+
+# Ensure index by rownames in seurat_obj
+annotations <- annotations[match(rownames(seurat_obj), annotations$input), ]
+rownames(annotations) <- annotations$input
+
 seurat_obj@misc[["gene_annotations"]] <- annotations
 
 message("Storing cells id...")
@@ -158,7 +172,7 @@ if("metadata" %in% names(config)){
     write.table(
         metadata_dynamo,
         file = "/output/metadata-cells.csv",
-        quote = F, col.names = F, row.names = F,
+        quote = F, col.names = T, row.names = F,
         sep = "\t"
     )
 }
@@ -226,15 +240,16 @@ config.doubletScores <- list(enabled="true", auto="true",
 )
 
 # BE CAREFUL! The method is based on config.json. For multisample only seuratv4, for unisample LogNormalize
-identified.method <- ifelse(length(samples)==1, "unisample", "seuratv4")
-config.dataIntegration <- list(enabled="true", auto="true", 
+# hardcoded because unisample check is performed in dataIntegration 
+identified.method <- 'seuratv4'
+config.dataIntegration <- list(auto="true", 
     dataIntegration = list( method = identified.method , 
                         methodSettings = list(seuratv4=list(numGenes=2000, normalisation="logNormalize"), 
                                             unisample=list(numGenes=2000, normalisation="logNormalize"))),
     dimensionalityReduction = list(method = "rpca", numPCs = 30, excludeGeneCategories = c())
 )
 
-config.configureEmbedding <- list(enabled="true", auto="true", 
+config.configureEmbedding <- list(auto="true", 
     embeddingSettings = list(method = "umap", methodSettings = list(
                                 umap = list(minimumDistance=0.3, distanceMetric="euclidean"), 
                                 tsne = list(perplexity=min(30, ncol(seurat_obj)/100), learningRate=max(200, ncol(seurat_obj)/12))
@@ -296,7 +311,7 @@ add_custom_config_per_sample <- function(step_fn, config, scdata, samples){
     result_config$auto <- NULL
     result_config$enabled <- NULL
     # Update config with the unisample thresholds
-    config[[sample]] <- result_config
+    config[[paste("sample-", sample, sep = "")]] <- result_config
   }
   
   return(config)
@@ -333,5 +348,4 @@ message("config file...")
 write(exportJson, "/output/config_dataProcessing.json")
 
 message("Step 4 completed.")
-
 

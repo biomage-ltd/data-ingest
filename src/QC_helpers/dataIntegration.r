@@ -25,7 +25,7 @@
 #       }
 #   },
 
-dataIntegration <- function(scdata, config){
+dataIntegration <- function(scdata, config) {
 
     # Check wheter the filter is set to true or false
     if (as.logical(toupper(config$enabled))){
@@ -82,8 +82,11 @@ run_dataIntegration <- function(scdata, config){
     umap_min_distance <- 0.3
     umap_distance_metric <- "euclidean"
 
-    # Currently, we only support Seurat V3 pipeline for the multisample integration
-   if(method=="seuratv4"){
+    # temporary to make sure we don't run integration if unisample
+    nsamples <- length(unique(scdata$samples))
+    
+    # Currently, we only support Seurat V4 pipeline for the multisample integration
+    if(nsamples > 1 && method=="seuratv4"){
         data.split <- SplitObject(scdata, split.by = "type")
         for (i in 1:length(data.split)) {
             data.split[[i]] <- NormalizeData(data.split[[i]], normalization.method = normalisation, verbose = F)
@@ -93,6 +96,7 @@ run_dataIntegration <- function(scdata, config){
         scdata <- IntegrateData(anchorset = data.anchors, dims = 1:numPCs)
         DefaultAssay(scdata) <- "integrated"
     }else{
+        print('Only one sample detected.')
         # Else, we are in unisample experiment and we only need to normalize 
         scdata <- Seurat::NormalizeData(scdata, normalization.method = normalisation, verbose = F)
         scdata <-Seurat::FindVariableFeatures(scdata, selection.method = "vst", nfeatures = nfeatures, verbose = F)

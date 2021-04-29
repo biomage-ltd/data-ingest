@@ -46,6 +46,12 @@ check_10x_input <- function(samples){
     }
   }
 
+  if(check_v2)
+    message("Version of Cell Ranger: V2")
+
+  if(check_v3)
+    message("Version of Cell Ranger: V3")
+
   return(TRUE)
 
 }
@@ -92,14 +98,30 @@ create_dataframe <- function(config){
       "There should be the files {genes.tsv, matrix.mtx, barcodes.tsv} or {features.tsv.gz, barcodes.tsv.gz and matrix.mtx.gz}")
     }
 
+    annotation_features <- list()
+    # overall feature annotation is derived from input data saved in genes.tsv features.tsv.gz
+    # since each sample only carries a subset of annotation for it's expressed genes, the annotation for all samples is merged.
+    # this is an excerpt of features.tsv.gz
+    # ENSG00000237613 | FAM138A | Gene Expression
+    # ENSG00000186092 | OR4F5 | Gene Expression
+    # More information about genes.tsv features.tsv.gz: https://support.10xgenomics.com/single-cell-gene-expression/software/pipelines/latest/output/matrices
+
     for(sample in samples){
-      scdata[[sample]] <- Read10X(paste("/input", sample, sep = "/"))  
+      sample_dir <- file.path('/input', sample)
+      scdata[[sample]] <- Read10X(sample_dir, gene.column = 1)  
+      fpaths <- file.path(sample_dir, c('genes.tsv', 'features.tsv.gz'))
+      fpath <- fpaths[file.exists(fpaths)][1]
+      if (!is.na(fpath)) annotation_features[[sample]] <- read.delim(fpath, header = FALSE)
       message(
         paste(
           "Found", nrow(scdata[[sample]]), "genes and", ncol(scdata[[sample]]), "cells in sample", sample, "."
         )
       )
     }
+    annotation_features_df <- unique(do.call('rbind', annotation_features))
+    annotation_features_df <- annotation_features_df[, c(1, 2)]
+    colnames(annotation_features_df) <- c("input", "name")
+    write.table(annotation_features_df, "/output/features_annotations.tsv", sep = "\t", col.names = TRUE, row.names = FALSE, quote = FALSE)
   }
   
   # So far, we haven't tested input format in table type. 
@@ -117,6 +139,7 @@ create_dataframe <- function(config){
   
   return(scdata)
 }
+
 
 # prepare_scrublet_table function 
 #' @description Since scrublet cannot run with the original raw matrix (since there are a large amount of cells with empty reads), we need to prefiltered with a minimun
@@ -158,7 +181,9 @@ scdata_list <- create_dataframe(config)
 
 # We store the pre-filtered scdata for scrublets per sample
 message("Exporting pre-filtered scdata for scrublets...")
-sapply(names(scdata_list), function(sample_name) prepare_scrublet_table(scdata_list[[sample_name]], sample_name))
+for (sample_name in names(scdata_list)) {
+  prepare_scrublet_table(scdata_list[[sample_name]], sample_name)
+}
 
 # We store the raw scdata_list since for the emptyDrops since to compute the background we cannot remove any cells. 
 message("Exporting raw scdata for emptyDrops...")
