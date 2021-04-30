@@ -42,11 +42,17 @@ Chicken is `ggallus`,  Zebrafish is `drerio`, etc.
 
 `input` should not be modified for 10x data sets.
 
-5. Run: `CLUSTER_ENV=production docker-compose up --build` to upload to production. The default will
+7. Run: `CLUSTER_ENV=production docker-compose up --build` to upload to production. The default will
 upload to staging. 
 
 This process should have given you an Experiment-ID (EID) as an output and also uploaded 3 things:
 
-1. The experiment configuration in `json` format into **DynamoDB** table `experiments-{CLUSTER_ENV}` with the EID as `experimentId` partion key
-2. The sample configuration in `json` format into **DynamoDB** table `samples-{CLUSTER_ENV}` with the EID as `experimentId` partion key
-3. An `r.rds` object into **S3** this bucket:  `biomage-source-{CLUSTER_ENV}/{experiment_id}/r.rds`
+- The experiment configuration in `json` format into **DynamoDB** table `experiments-{CLUSTER_ENV}` with the EID as `experimentId` partion key
+- The sample configuration in `json` format into **DynamoDB** table `samples-{CLUSTER_ENV}` with the EID as `experimentId` partion key
+- An `r.rds` object into **S3** this bucket:  `biomage-source-{CLUSTER_ENV}/{experiment_id}/r.rds`
+
+8. Update experiment annotation table manually:
+When uploading a new or updated an experiment, the central [experiment-overview-table](https://docs.google.com/spreadsheets/d/1lO4fdAkCC_wvgW-TaN2XrEI-XP7266psqeeeggAGtiA/edit#gid=0) should be updated.
+Specifically, there are columns for ingested date and data ingest version both in production and staging. 
+The idea here is that every time we reingest data we need to modify the last ingested date and add the commit hash of master at the moment of ingestion (i.e e15cfbe). 
+There's a specific column for staging and one for production so we always know when and with which version of the data ingest our data was uploaded.
