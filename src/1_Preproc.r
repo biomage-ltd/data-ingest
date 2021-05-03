@@ -34,7 +34,7 @@ suppressWarnings(library(MASS))
 #' @return TRUE if the design is correct FALSE otherwise
 check_10x_input <- function(samples){
   
-  cell_ranger_v2 <- c("genes.tsv", "barcodes.tsv", "matrix.mtx")
+  cell_ranger_v2 <- c("genes.tsv.gz", "barcodes.tsv.gz", "matrix.mtx.gz")
   cell_ranger_v3 <- c("features.tsv.gz", "barcodes.tsv.gz", "matrix.mtx.gz")
 
   for(sample in samples){
@@ -56,6 +56,32 @@ check_10x_input <- function(samples){
 
 }
 
+# Read10X only support CellRanger V2 for ungz version of the file. However, we will
+# store all the files with the gz version. This function add/remove the gz from given files.
+rename_files_to_fit_CellRanger_V2 <- function(files, add=TRUE){
+    
+  addgz <- function(s) {
+    return(paste0(s, ".gz"))
+  }
+
+  removegz <- function(s) {
+    return(gsub(".gz", "", s))
+  }
+  
+  if(add){
+    message("Adding gz to files: ", files)
+    for(my_file in files){
+      file.rename(my_file, addgz(my_file))
+    }
+  }else{
+    message("Removing gz to files: ", files)
+    for(my_file in files){
+      file.rename(my_file, removegz(my_file))
+    }
+  }
+
+
+}
 
 # create_dataframe function
 #' @description read matrix based on config. Possibles input
@@ -81,6 +107,7 @@ create_dataframe <- function(config){
     samples <- list.dirs("/input", full.names = F)[-1]
   }else{
     samples <- config$samples
+
     if (!all(samples%in%list.dirs("/input", full.names = F)))
       stop("Check samples to be used in the analysis, 
       since there are some of them that hasn't got a folder with the files: ",
@@ -108,6 +135,14 @@ create_dataframe <- function(config){
 
     for(sample in samples){
       sample_dir <- file.path('/input', sample)
+
+      message("Reading files --> ", list.files(sample_dir, full.names = TRUE))
+
+      # If we are in CellRanger V2 we need to remove gz to the files in order to use the function Read10X
+      if(any(grepl("genes", list.files(sample_dir)))){
+        rename_files_to_fit_CellRanger_V2(list.files(sample_dir, full.names = TRUE), add=FALSE)
+      }
+
       scdata[[sample]] <- Read10X(sample_dir, gene.column = 1)  
       fpaths <- file.path(sample_dir, c('genes.tsv', 'features.tsv.gz'))
       fpath <- fpaths[file.exists(fpaths)][1]
@@ -117,6 +152,12 @@ create_dataframe <- function(config){
           "Found", nrow(scdata[[sample]]), "genes and", ncol(scdata[[sample]]), "cells in sample", sample, "."
         )
       )
+
+      # Now, we can add again the gz suffix
+      if(any(grepl("genes", list.files(sample_dir)))){
+        rename_files_to_fit_CellRanger_V2(list.files(sample_dir, full.names = TRUE), add=TRUE)
+      }
+
     }
     annotation_features_df <- unique(do.call('rbind', annotation_features))
     annotation_features_df <- annotation_features_df[, c(1, 2)]
@@ -151,7 +192,7 @@ create_dataframe <- function(config){
 #' @param min.features Include cells where at least this many features are detected. Default parameter by Seurat and "min.features" of CreateSeuratObject fn (url: https://satijalab.org/seurat/archive/v3.2/pbmc3k_tutorial.html)
 #' We include this pre-minimun filter just to be able to run the scrublet (since with the raw matrix it fails).
 #' @export
-prepare_scrublet_table <- function(scdata, sample_name, min.features = 200) {
+prepare_scrublet_table <- function(scdata, sample_name, min.features = 10) {
 
   message(
     "Saving ", sample_name, "..."
@@ -179,14 +220,16 @@ config <- RJSONIO::fromJSON("/input/meta.json")
 message("Creating raw dataframe...")
 scdata_list <- create_dataframe(config)
 
+print(str(scdata_list))
+
 # We store the pre-filtered scdata for scrublets per sample
 message("Exporting pre-filtered scdata for scrublets...")
 for (sample_name in names(scdata_list)) {
-  prepare_scrublet_table(scdata_list[[sample_name]], sample_name)
+  #prepare_scrublet_table(scdata_list[[sample_name]], sample_name)
 }
 
 # We store the raw scdata_list since for the emptyDrops since to compute the background we cannot remove any cells. 
 message("Exporting raw scdata for emptyDrops...")
-saveRDS(scdata_list, file = "/output/pre-doublet-scdata_list.rds", compress = FALSE)
+#saveRDS(scdata_list, file = "/output/pre-doublet-scdata_list.rds", compress = FALSE)
 
 message("Step 1 completed.")
