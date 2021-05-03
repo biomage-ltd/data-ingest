@@ -220,16 +220,14 @@ config <- RJSONIO::fromJSON("/input/meta.json")
 message("Creating raw dataframe...")
 scdata_list <- create_dataframe(config)
 
-print(str(scdata_list))
-
 # We store the pre-filtered scdata for scrublets per sample
 message("Exporting pre-filtered scdata for scrublets...")
 for (sample_name in names(scdata_list)) {
-  #prepare_scrublet_table(scdata_list[[sample_name]], sample_name)
+  prepare_scrublet_table(scdata_list[[sample_name]], sample_name)
 }
 
 # We store the raw scdata_list since for the emptyDrops since to compute the background we cannot remove any cells. 
 message("Exporting raw scdata for emptyDrops...")
-#saveRDS(scdata_list, file = "/output/pre-doublet-scdata_list.rds", compress = FALSE)
+saveRDS(scdata_list, file = "/output/pre-doublet-scdata_list.rds", compress = FALSE)
 
 message("Step 1 completed.")
