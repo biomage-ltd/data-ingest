@@ -24,7 +24,8 @@ For each sample, create a subfolder in `input/` with the sample name. A meta.jso
 4. Go to S3 to `biomage-originals-production` bucket. You should see several folders.
 Each of them contains unprocessed experiment results for a user. Navigate to the correct
 folder with analysis files you want to preprocess and load in the platform. The folder
-should contain files `barcodes.tsv`, `genes.tsv`, `matrix.mtx`.
+should contain files `barcodes.tsv`, `genes.tsv`, `matrix.mtx` (Cellranger <= V2) 
+or `features.tsv.gz`, `barcodes.tsv.gz`, `matrix.mtx.gz` (Cellranger >= V3).
 
 5. Download the `barcodes.tsv`, `genes.tsv`, `matrix.mtx` files, located in S3 from the
 previous step. Make sure that they are saved inside the appropriate `input/${sample}`
@@ -42,6 +43,7 @@ of the folder in the S3 bucket.
 Mouse is `mmusculus`, Chicken is `ggallus`,  Zebrafish is `drerio`, etc.
 
 `samples` is a list of sample names that must match the sample subfolders created in step 3.
+ i.e. for unisample: `"samples": ["brain"]` and for multipsample `"samples": ["sample1", "sample2"]`.
 
 `input` should not be modified for 10x data sets.
 
