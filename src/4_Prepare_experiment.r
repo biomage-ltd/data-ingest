@@ -237,7 +237,7 @@ config.numGenesVsNumUmis <- list(enabled="true", auto="true",
 )
 
 config.doubletScores <- list(enabled="true", auto="true", 
-    filterSettings = list(probabilityThreshold = 0.25, binStep = 0.05)
+    filterSettings = list(probabilityThreshold = 0.5, binStep = 0.05)
 )
 
 # BE CAREFUL! The method is based on config.json. For multisample only seuratv4, for unisample LogNormalize
@@ -320,12 +320,10 @@ add_custom_config_per_sample <- function(step_fn, config, scdata, samples){
   
 }
 
-# Only recompute in multisample case
-if (length(samples)>1){
-  config.cellSizeDistribution <- add_custom_config_per_sample(cellSizeDistribution_config, config.cellSizeDistribution, seurat_obj, unique(seurat_obj$samples))
-  config.numGenesVsNumUmis <- add_custom_config_per_sample(numGenesVsNumUmis_config, config.numGenesVsNumUmis, seurat_obj, unique(seurat_obj$samples))
-  config.doubletScores <- add_custom_config_per_sample(doubletScores_config, config.doubletScores, seurat_obj, unique(seurat_obj$samples))
-}
+# Compute for multisample and unisample
+config.cellSizeDistribution <- add_custom_config_per_sample(cellSizeDistribution_config, config.cellSizeDistribution, seurat_obj, unique(seurat_obj$samples))
+config.numGenesVsNumUmis <- add_custom_config_per_sample(numGenesVsNumUmis_config, config.numGenesVsNumUmis, seurat_obj, unique(seurat_obj$samples))
+config.doubletScores <- add_custom_config_per_sample(doubletScores_config, config.doubletScores, seurat_obj, unique(seurat_obj$samples))
 
 # When we remove the steps from data-ingest we need to change here the default config. 
 # Save config for all steps. 
