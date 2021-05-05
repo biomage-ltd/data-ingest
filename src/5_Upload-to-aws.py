@@ -19,16 +19,20 @@ from datetime import datetime
 import uuid
 
 COLOR_POOL = []
-CLUSTER_ENV = os.getenv("CLUSTER_ENV")
+CLUSTER_ENVS = [os.getenv("CLUSTER_ENV", "staging")]
+if CLUSTER_ENVS[0] == "all": CLUSTER_ENVS = ['staging', 'production']
 
 WARN_TXT_COL = "\033[93m"
 RESET_TXT_COL = "\033[0m"
 ERR_TXT_COL = "\033[91m"
-print(f"{WARN_TXT_COL}Deploying to {CLUSTER_ENV}{RESET_TXT_COL}")
 
-if not (CLUSTER_ENV in ["staging", "production"]):
-    print(f"{ERR_TXT_COL}{CLUSTER_ENV} does not exists{RESET_TXT_COL}")
-    exit(1)
+for CLUSTER_ENV in CLUSTER_ENVS:
+    print(f"{WARN_TXT_COL}Deploying to {CLUSTER_ENV}{RESET_TXT_COL}")
+
+for CLUSTER_ENV in CLUSTER_ENVS:
+    if not (CLUSTER_ENV in ["staging", "production"]):
+        print(f"{ERR_TXT_COL}{CLUSTER_ENV} does not exists{RESET_TXT_COL}")
+        exit(1)
 
 with open("/data-ingest/src/color_pool.json") as f:
     COLOR_POOL = json.load(f)
@@ -206,12 +210,16 @@ def main():
         ]
     )
 
+    # save experiment_id for record-keeping
+    with open("/output/experiment_id.txt", "w") as text_file:
+        text_file.write(experiment_id)
+
     config = None
     with open("/input/meta.json", "r") as f:
         config = json.load(f)
 
     # read config related with QC pipeline
-    config_dataProcessing = None
+    config_dataProces1sing = None
     with open("/output/config_dataProcessing.json", "r") as f:
         config_dataProcessing = json.load(f)
 
@@ -238,7 +246,9 @@ def main():
 
     print("Experiment name is", config["name"])
 
-    FILE_NAME = f"biomage-source-{CLUSTER_ENV}/{experiment_id}/r.rds"
+    FILE_NAMES = [
+        f"biomage-source-{CLUSTER_ENV}/{experiment_id}/r.rds" 
+        for CLUSTER_ENV in CLUSTER_ENVS]
 
     experiment_data = {
         "apiVersion": "2.0.0-data-ingest-seurat-rds-automated",
@@ -262,51 +272,53 @@ def main():
     access_key = os.getenv("AWS_ACCESS_KEY_ID")
     secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
-    r_object_bucket, r_object_key = FILE_NAME.split("/", 1)
+    for CLUSTER_ENV, FILE_NAME in zip(CLUSTER_ENVS, FILE_NAMES):
 
-    dynamo = boto3.resource(
-        "dynamodb",
-        aws_access_key_id=access_key,
-        aws_secret_access_key=secret_access_key,
-        region_name="eu-west-1",
-    ).Table(f"experiments-{CLUSTER_ENV}")
-    dynamo.put_item(Item=experiment_data)
+        r_object_bucket, r_object_key = FILE_NAME.split("/", 1)
 
-    dynamo = boto3.resource(
-        "dynamodb",
-        aws_access_key_id=access_key,
-        aws_secret_access_key=secret_access_key,
-        region_name="eu-west-1",
-    ).Table(f"samples-{CLUSTER_ENV}")
-    dynamo.put_item(Item=samples_data)
+        dynamo = boto3.resource(
+            "dynamodb",
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_access_key,
+            region_name="eu-west-1",
+        ).Table(f"experiments-{CLUSTER_ENV}")
+        dynamo.put_item(Item=experiment_data)
 
-    s3 = boto3.client(
-        "s3",
-        aws_access_key_id=access_key,
-        aws_secret_access_key=secret_access_key,
-        region_name="eu-west-1",
-    )
+        dynamo = boto3.resource(
+            "dynamodb",
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_access_key,
+            region_name="eu-west-1",
+        ).Table(f"samples-{CLUSTER_ENV}")
+        dynamo.put_item(Item=samples_data)
 
-    s3.put_object(
-        Body=cell_sets_data, Bucket=f"cell-sets-{CLUSTER_ENV}", Key=experiment_id
-    )
+        s3 = boto3.client(
+            "s3",
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_access_key,
+            region_name="eu-west-1",
+        )
 
-    s3 = boto3.client(
-        "s3",
-        aws_access_key_id=access_key,
-        aws_secret_access_key=secret_access_key,
-        region_name="eu-west-1",
-    )
+        s3.put_object(
+            Body=cell_sets_data, Bucket=f"cell-sets-{CLUSTER_ENV}", Key=experiment_id
+        )
 
-    with open("/output/experiment.rds", "rb") as f:
-        s3.put_object(Body=f, Bucket=r_object_bucket, Key=r_object_key)
+        s3 = boto3.client(
+            "s3",
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_access_key,
+            region_name="eu-west-1",
+        )
 
-    if CLUSTER_ENV == "production":
-        print("successful. experiment is now accessible at:")
-        print(f"https://scp.biomage.net/experiments/{experiment_id}/data-exploration")
+        with open("/output/experiment.rds", "rb") as f:
+            s3.put_object(Body=f, Bucket=r_object_bucket, Key=r_object_key)
 
-    elif CLUSTER_ENV == "staging":
-        print(f"successful. Experiment ID: {experiment_id} uploaded to staging.")
+        if CLUSTER_ENV == "production":
+            print("successful. experiment is now accessible at:")
+            print(f"https://scp.biomage.net/experiments/{experiment_id}/data-exploration")
+
+        elif CLUSTER_ENV == "staging":
+            print(f"successful. Experiment ID: {experiment_id} uploaded to staging.")
 
 
 main()
