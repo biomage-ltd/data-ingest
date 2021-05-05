@@ -17,6 +17,7 @@ options(future.globals.maxSize= 1000 * 1024 ^ 2)
 source("/data-ingest/src/help.r")
 source("/data-ingest/src/QC_helpers/cellSizeDistribution_config.r")
 source("/data-ingest/src/QC_helpers/numGenesVsNumUmis_config.r")
+source("/data-ingest/src/QC_helpers/doubletScores_config.r")
 
 
 ################################################
