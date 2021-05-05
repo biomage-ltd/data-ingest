@@ -149,7 +149,7 @@ create_dataframe <- function(config){
       }
 
       scdata[[sample]] <- Read10X(sample_dir, gene.column = 1)  
-      fpaths <- file.path(sample_dir, c('genes.tsv', 'features.tsv.gz'))
+      annot_fpath <- sample_fpaths[grepl('genes.tsv$|features.tsv.gz$', sample_fpaths)]
       fpath <- fpaths[file.exists(fpaths)][1]
       if (!is.na(fpath)) annotation_features[[sample]] <- read.delim(fpath, header = FALSE)
       message(
