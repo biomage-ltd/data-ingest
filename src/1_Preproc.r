@@ -58,30 +58,6 @@ check_10x_input <- function(samples){
 
 # Read10X only support CellRanger V2 for ungz version of the file. However, we will
 # store all the files with the gz version. This function add/remove the gz from given files.
-rename_files_to_fit_CellRanger_V2 <- function(files, add=TRUE){
-    
-  addgz <- function(s) {
-    return(paste0(s, ".gz"))
-  }
-
-  removegz <- function(s) {
-    return(gsub(".gz", "", s))
-  }
-  
-  if(add){
-    message("Adding gz to files: ", files)
-    for(my_file in files){
-      file.rename(my_file, addgz(my_file))
-    }
-  }else{
-    message("Removing gz to files: ", files)
-    for(my_file in files){
-      file.rename(my_file, removegz(my_file))
-    }
-  }
-
-
-}
 
 # create_dataframe function
 #' @description read matrix based on config. Possibles input
