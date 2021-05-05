@@ -32,7 +32,8 @@ compute_doublet_scores <- function(scdata, sample_name, min.features = 10) {
   
     message("Sample --> ", sample_name, "...")
     scdata_DS <- scDblFinder(scdata[, Matrix::colSums(scdata>0)>=min.features])
-    df_doublet_scores <- data.frame(Barcodes=rownames(scdata_DS@colData), doublet_scores=scdata_DS@colData$scDblFinder.score)
+    df_doublet_scores <- data.frame(Barcodes=rownames(scdata_DS@colData), doublet_scores=scdata_DS@colData$scDblFinder.score,
+    doublet_class = scdata_DS@colData$scDblFinder.class)
 
     write.table(df_doublet_scores, file = paste("/output/doublet-scores-", sample_name, ".csv", sep = ""), row.names = FALSE, col.names = FALSE, quote = FALSE, sep = "\t")
 }
