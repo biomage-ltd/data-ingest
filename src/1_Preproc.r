@@ -125,9 +125,9 @@ create_dataframe <- function(config){
       }
 
       scdata[[sample]] <- Read10X(sample_dir, gene.column = 1)  
-      annot_fpath <- sample_fpaths[grepl('genes.tsv$|features.tsv.gz$', sample_fpaths)]
-      fpath <- fpaths[file.exists(fpaths)][1]
-      if (!is.na(fpath)) annotation_features[[sample]] <- read.delim(fpath, header = FALSE)
+      annot_fpath <- sample_fpaths[grepl('genes.tsv$|features.tsv.gz$', sample_fpaths)] 
+      annotation_features[[sample]] <- read.delim(annot_fpath, header = FALSE)
+
       message(
         paste(
           "Found", nrow(scdata[[sample]]), "genes and", ncol(scdata[[sample]]), "cells in sample", sample, "."
@@ -135,7 +135,7 @@ create_dataframe <- function(config){
       )
 
       # Now, we can add again the gz suffix
-      if (is_v2) file.rename(sample_fpaths, paste0(fpaths, '.gz'))
+      if (is_v2) file.rename(sample_fpaths, paste0(sample_fpaths, '.gz'))
 
     }
     annotation_features_df <- unique(do.call('rbind', annotation_features))
