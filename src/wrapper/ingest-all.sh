@@ -1,6 +1,4 @@
 #!/bin/bash
-# sync from s3 to local
-aws s3 sync s3://biomage-originals-production ./user_data/
 
 # run data-ingest for each folder in user_data
 for d in ./user_data/*; do

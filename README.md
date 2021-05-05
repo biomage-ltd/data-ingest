@@ -8,6 +8,9 @@ Re-ingest everything
 Run from `data-ingest` folder:
 
 ```bash
+# sync from s3 to local
+aws s3 sync s3://biomage-originals-production ./user_data/
+
 CLUSTER_ENV=all ./src/wrapper/ingest-all.sh
 ```
 
