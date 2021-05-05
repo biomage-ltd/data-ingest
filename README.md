@@ -5,6 +5,7 @@ An application for ingesting data into Biomage
 
 Re-ingest everything
 ------
+
 Run from `data-ingest` folder:
 
 ```bash
