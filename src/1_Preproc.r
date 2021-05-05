@@ -135,9 +135,7 @@ create_dataframe <- function(config){
       )
 
       # Now, we can add again the gz suffix
-      if(any(grepl("genes", list.files(sample_dir)))){
-        rename_files_to_fit_CellRanger_V2(list.files(sample_dir, full.names = TRUE), add=TRUE)
-      }
+      if (is_v2) file.rename(sample_fpaths, paste0(fpaths, '.gz'))
 
     }
     annotation_features_df <- unique(do.call('rbind', annotation_features))
