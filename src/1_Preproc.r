@@ -136,11 +136,16 @@ create_dataframe <- function(config){
     for(sample in samples){
       sample_dir <- file.path('/input', sample)
 
-      message("Reading files --> ", list.files(sample_dir, full.names = TRUE))
+
+      sample_fpaths <-  list.files(sample_dir, full.names = TRUE)
+      message("Reading files --> ", sample_fpaths)
 
       # If we are in CellRanger V2 we need to remove gz to the files in order to use the function Read10X
-      if(any(grepl("genes", list.files(sample_dir)))){
-        rename_files_to_fit_CellRanger_V2(list.files(sample_dir, full.names = TRUE), add=FALSE)
+      is_v2 <- any(grepl("genes.tsv(.gz)?$", sample_fpaths))
+      if (is_v2) {
+          new_fpaths <- gsub(".gz$", "", sample_fpaths)
+          file.rename(sample_fpaths, new_fpaths)
+          sample_fpaths <- new_fpaths
       }
 
       scdata[[sample]] <- Read10X(sample_dir, gene.column = 1)  
