@@ -3,6 +3,20 @@ data-ingest
 
 An application for ingesting data into Biomage
 
+Re-ingest everything
+------
+Run from `data-ingest` folder:
+
+```bash
+CLUSTER_ENV=all ./src/wrapper/ingest-all.sh
+```
+
+This will:
+
+1. sync all data in `biomage-originals-producting` to `./user_data/`
+2. run data-ingest using each folder in `./user_data/*` as input
+3. create/append experiment meta-data to a `exp_meta.csv` file
+
 Set-up
 ------
 
@@ -43,7 +57,7 @@ Chicken is `ggallus`,  Zebrafish is `drerio`, etc.
 `input` should not be modified for 10x data sets.
 
 5. Run: `CLUSTER_ENV=production docker-compose up --build` to upload to production. The default will
-upload to staging. 
+upload to staging. You can also specify `CLUSTER_ENV=all` to upload to both staging and production.
 
 This process should have given you an Experiment-ID (EID) as an output and also uploaded 3 things:
 
