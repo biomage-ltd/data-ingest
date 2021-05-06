@@ -11,7 +11,7 @@ get_doublet_score <- function(sample) {
             paste("/output/doublet-scores-", sample, ".csv", sep = ""),
         )
 
-    colnames(scores) <- c("barcodes", "doublet_scores")
+    colnames(scores) <- c("barcodes", "doublet_scores", "doublet_class")
     rownames(scores) <- scores$barcodes    
     return(as.data.frame(scores))
 }

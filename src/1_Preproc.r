@@ -162,50 +162,12 @@ create_dataframe <- function(config){
   return(scdata)
 }
 
-
-# prepare_scrublet_table function 
-#' @description Since scrublet cannot run with the original raw matrix (since there are a large amount of cells with empty reads), we need to prefiltered with a minimun
-#' threshold. For that, we have used the one propose in Seurat tutorial (https://satijalab.org/seurat/archive/v3.2/pbmc3k_tutorial.html), which is related with cell size 
-#' and gene size.
-#' 
-#' @param scdata Sparse matrix with the counts for one sample.
-#' @param sample_name Name of the sample that we are preparing.
-#' @param min.features Include cells where at least this many features are detected. Default parameter by Seurat and "min.features" of CreateSeuratObject fn (url: https://satijalab.org/seurat/archive/v3.2/pbmc3k_tutorial.html)
-#' We include this pre-minimun filter just to be able to run the scrublet (since with the raw matrix it fails).
-#' @export
-prepare_scrublet_table <- function(scdata, sample_name, min.features = 10) {
-
-  message(
-    "Saving ", sample_name, "..."
-  )
-
-  scdata.filtered <- scdata[, Matrix::colSums(scdata>0)>=min.features]
-  table <- data.table(
-    as.matrix(
-      t(
-        scdata.filtered
-      )
-    )
-    , keep.rownames=T)
-  
-  path <- paste("/output/pre-doublet-matrix-", sample_name, ".csv", sep="")
-  
-  file.create(path)
-  data.table::fwrite(table, file = path, row.names = F)
-}
-
 message("Loading configuration...")
 config <- RJSONIO::fromJSON("/input/meta.json")
 
 # We include in variable scdata_list all the sparse matrix per sample
 message("Creating raw dataframe...")
 scdata_list <- create_dataframe(config)
-
-# We store the pre-filtered scdata for scrublets per sample
-message("Exporting pre-filtered scdata for scrublets...")
-for (sample_name in names(scdata_list)) {
-  prepare_scrublet_table(scdata_list[[sample_name]], sample_name)
-}
 
 # We store the raw scdata_list since for the emptyDrops since to compute the background we cannot remove any cells. 
 message("Exporting raw scdata for emptyDrops...")
