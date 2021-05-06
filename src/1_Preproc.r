@@ -34,7 +34,9 @@ suppressWarnings(library(MASS))
 #' @return TRUE if the design is correct FALSE otherwise
 check_10x_input <- function(samples){
   
-  cell_ranger_v2 <- c("genes.tsv", "barcodes.tsv", "matrix.mtx")
+  # Cell ranger v2 does in fact produce non gunzipped outputs, but since during
+  # data-upload gzip compresses all non-compressed file, so we expect files with *.gz ending here
+  cell_ranger_v2 <- c("genes.tsv.gz", "barcodes.tsv.gz", "matrix.mtx.gz")
   cell_ranger_v3 <- c("features.tsv.gz", "barcodes.tsv.gz", "matrix.mtx.gz")
 
   for(sample in samples){
@@ -56,6 +58,8 @@ check_10x_input <- function(samples){
 
 }
 
+# Read10X only support CellRanger V2 for ungz version of the file. However, we will
+# store all the files with the gz version. This function add/remove the gz from given files.
 
 # create_dataframe function
 #' @description read matrix based on config. Possibles input
@@ -81,6 +85,7 @@ create_dataframe <- function(config){
     samples <- list.dirs("/input", full.names = F)[-1]
   }else{
     samples <- config$samples
+
     if (!all(samples%in%list.dirs("/input", full.names = F)))
       stop("Check samples to be used in the analysis, 
       since there are some of them that hasn't got a folder with the files: ",
@@ -108,15 +113,32 @@ create_dataframe <- function(config){
 
     for(sample in samples){
       sample_dir <- file.path('/input', sample)
+
+
+      sample_fpaths <-  list.files(sample_dir, full.names = TRUE)
+      message("Reading files --> ", sample_fpaths)
+
+      # If we are in CellRanger V2 we need to remove gz to the files in order to use the function Read10X
+      is_v2 <- any(grepl("genes.tsv(.gz)?$", sample_fpaths))
+      if (is_v2) {
+          new_fpaths <- gsub(".gz$", "", sample_fpaths)
+          file.rename(sample_fpaths, new_fpaths)
+          sample_fpaths <- new_fpaths
+      }
+
       scdata[[sample]] <- Read10X(sample_dir, gene.column = 1)  
-      fpaths <- file.path(sample_dir, c('genes.tsv', 'features.tsv.gz'))
-      fpath <- fpaths[file.exists(fpaths)][1]
-      if (!is.na(fpath)) annotation_features[[sample]] <- read.delim(fpath, header = FALSE)
+      annot_fpath <- sample_fpaths[grepl('genes.tsv$|features.tsv.gz$', sample_fpaths)] 
+      annotation_features[[sample]] <- read.delim(annot_fpath, header = FALSE)
+
       message(
         paste(
           "Found", nrow(scdata[[sample]]), "genes and", ncol(scdata[[sample]]), "cells in sample", sample, "."
         )
       )
+
+      # Now, we can add again the gz suffix
+      if (is_v2) file.rename(sample_fpaths, paste0(sample_fpaths, '.gz'))
+
     }
     annotation_features_df <- unique(do.call('rbind', annotation_features))
     annotation_features_df <- annotation_features_df[, c(1, 2)]
@@ -151,7 +173,7 @@ create_dataframe <- function(config){
 #' @param min.features Include cells where at least this many features are detected. Default parameter by Seurat and "min.features" of CreateSeuratObject fn (url: https://satijalab.org/seurat/archive/v3.2/pbmc3k_tutorial.html)
 #' We include this pre-minimun filter just to be able to run the scrublet (since with the raw matrix it fails).
 #' @export
-prepare_scrublet_table <- function(scdata, sample_name, min.features = 200) {
+prepare_scrublet_table <- function(scdata, sample_name, min.features = 10) {
 
   message(
     "Saving ", sample_name, "..."
