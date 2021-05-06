@@ -14,6 +14,7 @@ suppressWarnings(library(gprofiler2))
 
 set.seed(123)
 options(future.globals.maxSize= 1000 * 1024 ^ 2)
+source("/data-ingest/src/test_object.r")
 source("/data-ingest/src/help.r")
 source("/data-ingest/src/QC_helpers/cellSizeDistribution_config.r")
 source("/data-ingest/src/QC_helpers/numGenesVsNumUmis_config.r")
@@ -146,8 +147,15 @@ if(all(!is.na(meta.data$emptyDrops_FDR))){
 }
 
 ################################################
+## Testing Seurat object before save
+################################################
+
+test_object(seurat_obj)
+
+################################################
 ## Saving files
 ################################################
+
 
 message("saving R object...")
 saveRDS(seurat_obj, file = "/output/experiment.rds", compress = FALSE)
@@ -243,14 +251,14 @@ config.doubletScores <- list(enabled="true", auto="true",
 # BE CAREFUL! The method is based on config.json. For multisample only seuratv4, for unisample LogNormalize
 # hardcoded because unisample check is performed in dataIntegration 
 identified.method <- 'seuratv4'
-config.dataIntegration <- list(auto="true", 
+config.dataIntegration <- list(auto="false", 
     dataIntegration = list( method = identified.method , 
                         methodSettings = list(seuratv4=list(numGenes=2000, normalisation="logNormalize"), 
                                             unisample=list(numGenes=2000, normalisation="logNormalize"))),
     dimensionalityReduction = list(method = "rpca", numPCs = 30, excludeGeneCategories = c())
 )
 
-config.configureEmbedding <- list(auto="true", 
+config.configureEmbedding <- list(auto="false", 
     embeddingSettings = list(method = "umap", methodSettings = list(
                                 umap = list(minimumDistance=0.3, distanceMetric="euclidean"), 
                                 tsne = list(perplexity=min(30, ncol(seurat_obj)/100), learningRate=max(200, ncol(seurat_obj)/12))
