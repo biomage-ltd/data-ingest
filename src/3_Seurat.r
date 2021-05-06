@@ -72,9 +72,9 @@ adding_metrics_and_annotation <- function(scdata, sample, config, min.cells = 3,
         mt.features <- mt.features[mt.features %in% rownames(seurat_obj)]
         if (length(mt.features))
             seurat_obj <- PercentageFeatureSet(seurat_obj, features=mt.features , col.name = "percent.mt")
-        else
-            seurat_obj$percent.mt <- 0
     }
+
+    if (is.null(seurat_obj@meta.data$percent.mt)) seurat_obj$percent.mt <- 0
 
     message("[", sample, "] \t Getting scrublet results...")
     scores <- get_doublet_score(sample)
