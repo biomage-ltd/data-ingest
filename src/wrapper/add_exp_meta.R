@@ -4,6 +4,7 @@ experiment_id <- readLines('./output/experiment_id.txt', warn = FALSE)
 n_filtered <- length(list.files('./output', 'pre-emptydrops'))
 
 res <- data.frame(
+  date = Sys.time(),
   experiment_id,
   experiment_name = meta$name,
   organism = meta$organism,
