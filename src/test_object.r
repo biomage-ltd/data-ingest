@@ -5,8 +5,7 @@ test_object <- function(scdata){
 
     test_that("Seurat object validation", {
         expect_is(scdata, "Seurat")
-        expect_true(nrow(scdata) > 100, "Seurat") # more than 100 barcodes
-        expect_true(ncol(scdata) > 100, "Seurat") # more tnan 100 genes
+        expect_true(nrow(scdata) > 100, "Seurat") # more than 100 genes
         expect_true(scdata@active.assay == "RNA")
     })
 
@@ -17,7 +16,9 @@ test_object <- function(scdata){
         md <- scdata@meta.data
         expect_true("barcode" %in% colnames(md))
         expect_true("orig.ident" %in% colnames(md))  
-        expect_true("percent.mt" %in% colnames(md))
+        if(any(grepl("^mt-", annotations$name, ignore.case = T))){
+            expect_true("percent.mt" %in% colnames(md))
+        }
         expect_true("doublet_scores" %in% colnames(md))
         expect_true("cells_id" %in% colnames(md))
         expect_true("samples" %in% colnames(md))
