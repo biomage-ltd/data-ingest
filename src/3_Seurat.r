@@ -72,9 +72,9 @@ adding_metrics_and_annotation <- function(scdata, sample, config, min.cells = 3,
         mt.features <- mt.features[mt.features %in% rownames(seurat_obj)]
         if (length(mt.features))
             seurat_obj <- PercentageFeatureSet(seurat_obj, features=mt.features , col.name = "percent.mt")
-        else
-            seurat_obj$percent.mt <- 0
     }
+
+    if (is.null(seurat_obj@meta.data$percent.mt)) seurat_obj$percent.mt <- 0
 
     message("[", sample, "] \t Getting scrublet results...")
     scores <- get_doublet_score(sample)
@@ -82,6 +82,9 @@ adding_metrics_and_annotation <- function(scdata, sample, config, min.cells = 3,
 
     idt <- scores$barcodes[scores$barcodes %in% rownames(seurat_obj@meta.data)]
     seurat_obj@meta.data[idt, "doublet_scores"] <- scores[idt, "doublet_scores"]
+    # Doublet class is the classifications that scDblFinder does to set the threshold of doublet_scores
+    # (https://bioconductor.org/packages/release/bioc/vignettes/scDblFinder/inst/doc/2_scDblFinder.html#thresholding-and-local-calibration)
+    seurat_obj@meta.data[idt, "doublet_class"] <- scores[idt, "doublet_class"]
 
     message("[", sample, "] \t Adding emptyDrops...")
     file_ed <-  paste("/output/pre-emptydrops-", sample,".rds", sep = "")
