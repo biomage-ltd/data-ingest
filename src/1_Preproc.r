@@ -34,6 +34,8 @@ suppressWarnings(library(MASS))
 #' @return TRUE if the design is correct FALSE otherwise
 check_10x_input <- function(samples){
   
+  # Cell ranger v2 does in fact produce non gunzipped outputs, but since during
+  # data-upload gzip compresses all non-compressed file, so we expect files with *.gz ending here
   cell_ranger_v2 <- c("genes.tsv.gz", "barcodes.tsv.gz", "matrix.mtx.gz")
   cell_ranger_v3 <- c("features.tsv.gz", "barcodes.tsv.gz", "matrix.mtx.gz")
 
