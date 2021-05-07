@@ -28,10 +28,18 @@ scdata_list <- scdata_list[samples]
 #' @param sample_name Name of the sample that we are preparing.
 #'
 #' @return 
-compute_doublet_scores <- function(scdata, sample_name, min.features = 10) {
+compute_doublet_scores <- function(scdata, sample_name) {
   
     message("Sample --> ", sample_name, "...")
-    scdata_DS <- scDblFinder(scdata[, Matrix::colSums(scdata>0)>=min.features], dbr = NULL, trajectoryMode = FALSE)
+
+    edpath <- paste0("/output/pre-emptydrops-", sample_name, ".rds")
+    if (file.exists(edpath)) {
+        edout <- readRDS(edpath)
+        keep <- edout$FDR <= 0.001
+        scdata <- scdata[, keep]
+    }
+
+    scdata_DS <- scDblFinder(scdata, dbr = NULL, trajectoryMode = FALSE)
     df_doublet_scores <- data.frame(Barcodes=rownames(scdata_DS@colData), doublet_scores=scdata_DS@colData$scDblFinder.score,
     doublet_class = scdata_DS@colData$scDblFinder.class)
 
