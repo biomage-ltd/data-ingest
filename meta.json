@@ -1,0 +1,8 @@
+{
+    "name": "Human brain nuclei - three pooled individuals",
+    "organism": "hsapiens",
+    "samples": ["brain"],
+    "input": {
+        "type": "10x"
+    }
+}
