@@ -219,7 +219,7 @@ def main():
         config = json.load(f)
 
     # read config related with QC pipeline
-    config_dataProces1sing = None
+    config_dataProcessing = None
     with open("/output/config_dataProcessing.json", "r") as f:
         config_dataProcessing = json.load(f)
 
