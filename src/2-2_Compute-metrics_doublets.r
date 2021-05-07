@@ -35,7 +35,7 @@ compute_doublet_scores <- function(scdata, sample_name) {
     edpath <- paste0("/output/pre-emptydrops-", sample_name, ".rds")
     if (file.exists(edpath)) {
         edout <- readRDS(edpath)
-        keep <- edout$FDR <= 0.001
+        keep <- which(edout$FDR <= 0.001)
         scdata <- scdata[, keep]
     }
 
