@@ -358,3 +358,5 @@ write(exportJson, "/output/config_dataProcessing.json")
 
 message("Step 4 completed.")
 
+message("Ending timer")
+saveRDS(Sys.time(), "/output/tend.rds")

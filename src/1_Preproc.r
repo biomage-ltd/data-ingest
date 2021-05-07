@@ -161,6 +161,8 @@ create_dataframe <- function(config){
   
   return(scdata)
 }
+message("Starting timer ...")
+saveRDS(Sys.time(), "/output/tstart.rds")
 
 message("Loading configuration...")
 config <- RJSONIO::fromJSON("/input/meta.json")
