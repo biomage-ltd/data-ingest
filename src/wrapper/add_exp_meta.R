@@ -1,10 +1,14 @@
 meta <- jsonlite::fromJSON('./input/meta.json', simplifyVector = TRUE)
 experiment_id <- readLines('./output/experiment_id.txt', warn = FALSE)
 
+tstart <- readRDS("./output/tstart.rds")
+tend <- readRDS("./output/tend.rds")
+
 n_filtered <- length(list.files('./output', 'pre-emptydrops'))
 
 res <- data.frame(
   date = Sys.time(),
+  process_time = tend - tstart,
   experiment_id,
   experiment_name = meta$name,
   organism = meta$organism,
