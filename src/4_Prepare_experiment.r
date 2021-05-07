@@ -14,9 +14,11 @@ suppressWarnings(library(gprofiler2))
 
 set.seed(123)
 options(future.globals.maxSize= 1000 * 1024 ^ 2)
+source("/data-ingest/src/test_object.r")
 source("/data-ingest/src/help.r")
 source("/data-ingest/src/QC_helpers/cellSizeDistribution_config.r")
 source("/data-ingest/src/QC_helpers/numGenesVsNumUmis_config.r")
+source("/data-ingest/src/QC_helpers/doubletScores_config.r")
 
 
 ################################################
@@ -145,8 +147,15 @@ if(all(!is.na(meta.data$emptyDrops_FDR))){
 }
 
 ################################################
+## Testing Seurat object before save
+################################################
+
+test_object(seurat_obj)
+
+################################################
 ## Saving files
 ################################################
+
 
 message("saving R object...")
 saveRDS(seurat_obj, file = "/output/experiment.rds", compress = FALSE)
@@ -236,20 +245,20 @@ config.numGenesVsNumUmis <- list(enabled="true", auto="true",
 )
 
 config.doubletScores <- list(enabled="true", auto="true", 
-    filterSettings = list(probabilityThreshold = 0.25, binStep = 0.05)
+    filterSettings = list(probabilityThreshold = 0.5, binStep = 0.05)
 )
 
 # BE CAREFUL! The method is based on config.json. For multisample only seuratv4, for unisample LogNormalize
 # hardcoded because unisample check is performed in dataIntegration 
 identified.method <- 'seuratv4'
-config.dataIntegration <- list(auto="true", 
+config.dataIntegration <- list(auto="false", 
     dataIntegration = list( method = identified.method , 
                         methodSettings = list(seuratv4=list(numGenes=2000, normalisation="logNormalize"), 
                                             unisample=list(numGenes=2000, normalisation="logNormalize"))),
     dimensionalityReduction = list(method = "rpca", numPCs = 30, excludeGeneCategories = c())
 )
 
-config.configureEmbedding <- list(auto="true", 
+config.configureEmbedding <- list(auto="false", 
     embeddingSettings = list(method = "umap", methodSettings = list(
                                 umap = list(minimumDistance=0.3, distanceMetric="euclidean"), 
                                 tsne = list(perplexity=min(30, ncol(seurat_obj)/100), learningRate=max(200, ncol(seurat_obj)/12))
@@ -272,6 +281,7 @@ config.configureEmbedding <- list(auto="true",
 # We are going to differentiate in samples only in the steps:
 # --> cellSizeDistribution
 # --> numGenesVsNumUmis
+# --> doubletScores
 #
 # For both of them, we will run again the step fn for each sample (samples names are stored in metadata type)
 
@@ -318,11 +328,10 @@ add_custom_config_per_sample <- function(step_fn, config, scdata, samples){
   
 }
 
-# Only recompute in multisample case
-if (length(samples)>1){
-  config.cellSizeDistribution <- add_custom_config_per_sample(cellSizeDistribution_config, config.cellSizeDistribution, seurat_obj, unique(seurat_obj$samples))
-  config.numGenesVsNumUmis <- add_custom_config_per_sample(numGenesVsNumUmis_config, config.numGenesVsNumUmis, seurat_obj, unique(seurat_obj$samples))
-}
+# Compute for multisample and unisample
+config.cellSizeDistribution <- add_custom_config_per_sample(cellSizeDistribution_config, config.cellSizeDistribution, seurat_obj, unique(seurat_obj$samples))
+config.numGenesVsNumUmis <- add_custom_config_per_sample(numGenesVsNumUmis_config, config.numGenesVsNumUmis, seurat_obj, unique(seurat_obj$samples))
+config.doubletScores <- add_custom_config_per_sample(doubletScores_config, config.doubletScores, seurat_obj, unique(seurat_obj$samples))
 
 # When we remove the steps from data-ingest we need to change here the default config. 
 # Save config for all steps. 

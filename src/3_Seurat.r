@@ -82,6 +82,9 @@ adding_metrics_and_annotation <- function(scdata, sample, config, min.cells = 3,
 
     idt <- scores$barcodes[scores$barcodes %in% rownames(seurat_obj@meta.data)]
     seurat_obj@meta.data[idt, "doublet_scores"] <- scores[idt, "doublet_scores"]
+    # Doublet class is the classifications that scDblFinder does to set the threshold of doublet_scores
+    # (https://bioconductor.org/packages/release/bioc/vignettes/scDblFinder/inst/doc/2_scDblFinder.html#thresholding-and-local-calibration)
+    seurat_obj@meta.data[idt, "doublet_class"] <- scores[idt, "doublet_class"]
 
     message("[", sample, "] \t Adding emptyDrops...")
     file_ed <-  paste("/output/pre-emptydrops-", sample,".rds", sep = "")
